@@ -7,6 +7,8 @@ Encapsula la funcionalidad de visualización y animaciones.
 """
 
 import time
+import os
+import shutil
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
@@ -14,67 +16,50 @@ from rich.table import Table
 from rich import box
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 from rich.live import Live
+from rich.layout import Layout
+from rich.align import Align
 
 from netadmin.config.settings import COLORS, ANIMATION_STYLES, TABLE_STYLES
 
 
 class ConsoleManager:
-    """Gestor centralizado para la visualización en consola."""
-
     def __init__(self):
-        """Inicializa el gestor de consola con una instancia de Rich Console."""
         self.console = Console()
+        self.terminal_width = shutil.get_terminal_size().columns
 
     def mostrar_titulo(self, titulo, subtitulo=None):
-        """Muestra un título con estilo moderno y minimalista con emojis."""
-        # Estilo inspirado en CLIs modernas con emojis
         self.console.print()
 
-        # Determinar emoji según el título
-        emoji = "🌐"  # Emoji por defecto para red
-        if "Velocidad" in titulo:
-            emoji = "⚡"
-        elif "Ping" in titulo:
-            emoji = "📡"
-        elif "Dispositivos" in titulo or "Activos" in titulo:
-            emoji = "🖥️"
-        elif "Puertos" in titulo:
-            emoji = "🔌"
-        elif "Tráfico" in titulo or "Monitor" in titulo:
-            emoji = "📊"
-        elif "Servicio" in titulo:
-            emoji = "🔧"
-        elif "Vulnerabilidades" in titulo:
-            emoji = "🔒"
-        elif "IP" in titulo:
-            emoji = "📝"
-        elif "Escanear" in titulo:
-            emoji = "🔍"
-        elif "Estadísticas" in titulo:
-            emoji = "📈"
+        # Calcular longitudes
+        ancho_titulo = len(titulo)
+        ancho_subtitulo = len(subtitulo) if subtitulo else 0
+        ancho_contenido = max(ancho_titulo, ancho_subtitulo)
 
-        # Verificar si estamos en el título principal de la aplicación
-        if "NetAdmin CLI" in titulo:
-            emoji = "🚀"
-            # Título principal con emoji y formato moderno
-            self.console.print(
-                f"  [{COLORS['primario']}]┃[/] [bold white]{emoji} {titulo}[/]"
-            )
-        else:
-            # Otros títulos con emoji correspondiente
-            self.console.print(
-                f"  [{COLORS['primario']}]┃[/] [bold white]{emoji} {titulo}[/]"
-            )
+        padding = 10
+        ancho_total = ancho_contenido + padding
 
-        # Subtítulo con estilo tenue si existe
+        linea_superior = f"╭{'─' * ancho_total}╮"
+
+        espacio_titulo = (ancho_total - ancho_titulo) // 2
+        linea_titulo = f"│{' ' * espacio_titulo}{titulo}{' ' * (ancho_total - ancho_titulo - espacio_titulo)}│"
+
         if subtitulo:
-            self.console.print(f"  [{COLORS['primario']}]┃[/] [dim]{subtitulo}[/]")
+            espacio_subtitulo = (ancho_total - ancho_subtitulo) // 2
+            linea_subtitulo = f"│{' ' * espacio_subtitulo}{subtitulo}{' ' * (ancho_total - ancho_subtitulo - espacio_subtitulo)}│"
 
-        # Separador minimalista
+        linea_inferior = f"╰{'─' * ancho_total}╯"
+
+        self.console.print(f"[bold {COLORS['primario']}]{linea_superior}[/]")
+        self.console.print(f"[bold {COLORS['primario']}]{linea_titulo}[/]")
+
+        if subtitulo:
+            self.console.print(f"[bold {COLORS['primario']}]{linea_subtitulo}[/]")
+
+        self.console.print(f"[bold {COLORS['primario']}]{linea_inferior}[/]")
+
         self.console.print()
 
     def mostrar_estado_nmap(self, info_nmap):
-        """Muestra el estado de nmap con iconos visuales."""
         if info_nmap["disponible"]:
             self.console.print(
                 f"[bold {COLORS['exito']}]✓[/] Nmap disponible: {info_nmap['version']}"
@@ -85,16 +70,11 @@ class ConsoleManager:
             )
 
     def mostrar_animacion_carga(self, mensaje, duracion=2, estilo=None):
-        """Muestra una animación de carga con el mensaje especificado."""
         estilo = estilo or ANIMATION_STYLES["carga"]
-        with self.console.status(
-            f"[bold {COLORS['primario']}]{mensaje}...", spinner=estilo
-        ):
+        with self.console.status(f"[{COLORS['texto']}]{mensaje}...[/]", spinner=estilo):
             time.sleep(duracion)
 
     def crear_tabla(self, titulo, columnas):
-        """Crea una tabla con estilo moderno y minimalista."""
-        # Usar SIMPLE como estilo de tabla para un aspecto más limpio y moderno
         tabla = Table(
             title=titulo, box=box.SIMPLE, title_style=f"bold {COLORS['primario']}"
         )
@@ -113,21 +93,10 @@ class ConsoleManager:
         return tabla
 
     def progreso_con_animacion(self, tareas):
-        """Crea una barra de progreso con animación para múltiples tareas.
-
-        Args:
-            tareas: Lista de diccionarios con la estructura:
-                   {"descripcion": "Texto descriptivo", "total": 100}
-                   Si total es None, será una tarea indeterminada.
-
-        Returns:
-            Objeto Progress y lista de IDs de tareas generadas.
-        """
+        """Crea una barra de progreso con animación para múltiples tareas."""
         progress = Progress(
             SpinnerColumn(),
-            TextColumn(
-                "[bold {color}]{{task.description}}".format(color=COLORS["primario"])
-            ),
+            TextColumn("[{color}]{{task.description}}".format(color=COLORS["texto"])),
             BarColumn(complete_style=COLORS["secundario"]),
             console=self.console,
             transient=True,
@@ -143,57 +112,51 @@ class ConsoleManager:
         return progress, task_ids
 
     def mostrar_error(self, mensaje, detalle=None):
-        """Muestra un mensaje de error formateado."""
-        self.console.print(f"[bold {COLORS['error']}]✖[/] {mensaje}")
+        self.console.print(f"[bold {COLORS['error']}]●[/] {mensaje}")
         if detalle:
-            self.console.print(f"  [dim]{detalle}[/]")
+            self.console.print(f"  [dim {COLORS['texto_dim']}]{detalle}[/]")
 
     def mostrar_advertencia(self, mensaje):
-        """Muestra un mensaje de advertencia formateado."""
-        self.console.print(f"[bold {COLORS['advertencia']}]⚠[/] {mensaje}")
+        self.console.print(f"[bold {COLORS['advertencia']}]●[/] {mensaje}")
 
     def mostrar_exito(self, mensaje):
-        """Muestra un mensaje de éxito formateado."""
-        self.console.print(f"[bold {COLORS['exito']}]✓[/] {mensaje}")
+        self.console.print(f"[bold {COLORS['exito']}]●[/] {mensaje}")
 
     def datos_formateados(self, titulo, datos, estilo="grid"):
-        """Muestra datos en formato clave-valor de manera atractiva.
-
-        Args:
-            titulo: Título de la sección de datos
-            datos: Diccionario con datos clave-valor
-            estilo: Estilo de visualización ("grid" o "lista")
-        """
         if estilo == "grid":
-            # Usar box.SIMPLE para mantener consistencia con el estilo moderno
             tabla = Table(
                 title=titulo,
                 box=box.SIMPLE,
                 show_header=False,
                 title_style=f"bold {COLORS['primario']}",
+                padding=(0, 1),
             )
-            tabla.add_column("Clave", style=f"bold {COLORS['primario']}")
-            tabla.add_column("Valor", style=COLORS["secundario"])
+            tabla.add_column("Clave", style=f"bold {COLORS['texto']}")
+            tabla.add_column("Valor", style=f"{COLORS['texto_dim']}")
 
             for clave, valor in datos.items():
                 tabla.add_row(clave, str(valor))
 
             self.console.print(tabla)
         else:
-            # Estilo de lista con iconos modernos
             self.console.print(f"\n[bold {COLORS['primario']}]{titulo}[/]")
             for clave, valor in datos.items():
                 self.console.print(
-                    f"  [{COLORS['info']}]•[/] [bold]{clave}:[/] {valor}"
+                    f"  [{COLORS['info']}]•[/] [bold {COLORS['texto']}]{clave}:[/] [{COLORS['texto_dim']}]{valor}[/]"
                 )
 
     def mostrar_comando_ejecutado(self, comando):
-        """Muestra el nombre del comando que se está ejecutando actualmente."""
-        self.console.print(
-            f"[bold {COLORS['primario']}]⟩[/] [bold]Ejecutando[/]: [bold white]{comando}[/]"
-        )
+        """Muestra el nombre del comando que se está ejecutando actualmente con estilo minimalista."""
         self.console.print()
 
+        partes_comando = comando.split()
+        nombre_comando = partes_comando[0] if partes_comando else ""
+        argumentos = " ".join(partes_comando[1:]) if len(partes_comando) > 1 else ""
 
-# Instancia global para uso en toda la aplicación
+        self.console.print(
+            f"[bold {COLORS['primario']}]❯[/] "
+            f"[bold {COLORS['secundario']}]{nombre_comando}[/] "
+            f"[{COLORS['texto_dim']}]{argumentos}[/]"
+        )
+
 console_manager = ConsoleManager()

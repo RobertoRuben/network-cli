@@ -1,11 +1,8 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-"""
-Comando para monitorear el tráfico de red por interfaz.
-"""
-
 import typer
+from rich import box
+from rich.table import Table
+from rich.text import Text
+
 from netadmin.cli import app
 from netadmin.utils.console import console_manager
 from netadmin.core.network import network_monitor
@@ -18,13 +15,10 @@ def comando(
         DEFAULTS["trafico_duracion"], help="Duración en segundos del monitoreo"
     )
 ):
-    """Monitorea el tráfico de red por interfaz durante un tiempo específico."""
-    # Mostrar comando que se está ejecutando
     console_manager.mostrar_comando_ejecutado(f"trafico --duracion {duracion}")
 
-    # Recopilar datos de tráfico con animación
     with console_manager.console.status(
-        f"[bold {COLORS['secundario']}]Recopilando datos de tráfico...",
+        f"[{COLORS['secundario']}]Recopilando datos de tráfico...",
         spinner=ANIMATION_STYLES["carga"],
     ):
         resultados = network_monitor.monitorear_trafico(duracion=duracion)
@@ -35,58 +29,75 @@ def comando(
         )
         return
 
-    # Crear tabla para mostrar el tráfico
-    columnas = [
-        {"nombre": "Interfaz", "estilo": "cyan"},
-        {"nombre": "Enviado", "estilo": "green", "alineacion": "right"},
-        {"nombre": "Recibido", "estilo": "yellow", "alineacion": "right"},
-        {"nombre": "Vel. Carga", "estilo": "magenta", "alineacion": "right"},
-        {"nombre": "Vel. Descarga", "estilo": "blue", "alineacion": "right"},
-    ]
-    tabla = console_manager.crear_tabla(f"Tráfico de Red ({duracion}s)", columnas)
+    console_manager.console.print()
 
-    # Total para estadísticas
+    console_manager.console.print(
+        f"[bold {COLORS['primario']}]⟡ TRÁFICO DE RED[/] [dim {COLORS['texto_dim']}]•[/] [bold {COLORS['secundario']}]{duracion}s[/]"
+    )
+    console_manager.console.print()
+
+    tabla = Table(
+        box=box.SIMPLE_HEAD, 
+        show_header=True,
+        header_style=f"bold {COLORS['primario']}",
+        show_edge=False,  
+        padding=(0, 1),  
+    )
+
+    tabla.add_column("INTERFAZ", style=f"{COLORS['secundario']}")
+    tabla.add_column("ENVIADO", style=f"{COLORS['texto']}", justify="right")
+    tabla.add_column("RECIBIDO", style=f"{COLORS['texto']}", justify="right")
+    tabla.add_column(
+        "↑", style=f"{COLORS['secundario']}", justify="right"
+    )  
+    tabla.add_column(
+        "↓", style=f"{COLORS['info']}", justify="right"
+    ) 
+
     total_enviado = 0
     total_recibido = 0
 
-    # Agregar datos a la tabla
+    max_trafico = {"interfaz": "", "total": 0}
+
     for dato in resultados:
         bytes_enviados = dato["bytes_enviados"]
         bytes_recibidos = dato["bytes_recibidos"]
         velocidad_carga = dato["velocidad_carga"]
         velocidad_descarga = dato["velocidad_descarga"]
 
+        total_trafico = bytes_enviados + bytes_recibidos
+        if total_trafico > max_trafico["total"]:
+            max_trafico = {"interfaz": dato["interfaz"], "total": total_trafico}
+
         total_enviado += bytes_enviados
         total_recibido += bytes_recibidos
 
         tabla.add_row(
-            dato["interfaz"],
+            Text(dato["interfaz"], style=f"bold {COLORS['texto']}"),
             f"{bytes_enviados / 1024:.2f} KB",
             f"{bytes_recibidos / 1024:.2f} KB",
             f"{velocidad_carga:.2f} KB/s",
             f"{velocidad_descarga:.2f} KB/s",
         )
 
-    # Añadir fila de totales
-    tabla.add_section()
+    tabla.add_row("", "", "", "", "")
+
     tabla.add_row(
-        "[bold]TOTAL",
-        f"[bold]{total_enviado / 1024:.2f} KB",
-        f"[bold]{total_recibido / 1024:.2f} KB",
+        Text("TOTAL", style=f"bold {COLORS['primario']}"),
+        Text(f"{total_enviado / 1024:.2f} KB", style=f"bold {COLORS['texto']}"),
+        Text(f"{total_recibido / 1024:.2f} KB", style=f"bold {COLORS['texto']}"),
         "",
         "",
     )
 
     console_manager.console.print(tabla)
+    console_manager.console.print()
 
-    # Mostrar dispositivo con mayor tráfico de forma concisa
     if resultados:
-        max_trafico = max(
-            resultados, key=lambda x: x["bytes_enviados"] + x["bytes_recibidos"]
+        trafico_total = max_trafico["total"] / 1024
+        console_manager.console.print(
+            f"[{COLORS['secundario']}]•[/] "
+            f"[bold {COLORS['texto']}]Mayor actividad:[/] "
+            f"[{COLORS['texto']}]{max_trafico['interfaz']}[/] "
+            f"[dim {COLORS['texto_dim']}]({trafico_total:.2f} KB)[/]"
         )
-        console_manager.mostrar_exito(
-            f"Interfaz con mayor tráfico: {max_trafico['interfaz']} "
-            f"({(max_trafico['bytes_enviados'] + max_trafico['bytes_recibidos']) / 1024:.2f} KB)"
-        )
-    else:
-        console_manager.mostrar_exito("Monitoreo de tráfico completado.")

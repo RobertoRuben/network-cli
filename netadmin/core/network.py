@@ -1,24 +1,16 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-"""
-Funcionalidades centrales de red para la aplicación NetAdmin CLI.
-"""
-
 import socket
 import time
 import subprocess
 import psutil
 import speedtest
-import re  # Para expresiones regulares
+import re  
 from typing import Dict, List, Tuple, Optional, Any, Generator
 import shutil
 import os
 
-from netadmin.config.settings import NETWORK_CONFIG, SPEEDTEST_CONFIG
+from netadmin.config.settings import NETWORK_CONFIG, SPEEDTEST_CONFIG, COLORS
 from netadmin.utils.console import console_manager
 
-# Importar nmap de manera segura
 try:
     import nmap
     NMAP_AVAILABLE = True
@@ -28,7 +20,6 @@ except Exception as e:
     NMAP_AVAILABLE = False
     print(f"Error al cargar nmap: {str(e)}")
 
-# Verificar si el ejecutable nmap existe en el sistema
 import shutil
 import os
 import subprocess
@@ -375,12 +366,8 @@ class NetworkScanner:
             return
         
         try:
-            # Intentamos usar nmap para descubrir puertos abiertos y servicios
-            # Esto nos permitirá luego identificar qué dispositivo está generando tráfico
-            console_manager.mostrar_animacion_carga(
-                f"Monitorizando tráfico de red ({duracion} segundos)", 
-                duracion=1
-            )
+            # Informar al usuario que estamos monitorizando el tráfico sin usar Live Display
+            console_manager.console.print(f"[{COLORS['secundario']}]Monitorizando tráfico de red ({duracion} segundos)...[/]")
             
             if self.nmap_available:
                 # Obtener información de tráfico inicial

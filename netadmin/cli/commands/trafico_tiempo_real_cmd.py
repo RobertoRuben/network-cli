@@ -1,10 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-"""
-Comando para monitorear el tráfico de red por dispositivo en tiempo real.
-"""
-
 import typer
 import time
 from rich.live import Live
@@ -37,25 +30,16 @@ def comando(
         5, "--cantidad", "-c", help="Cantidad de dispositivos a monitorear"
     ),
 ):
-    """Monitorea el tráfico de red por dispositivo en tiempo real.
-
-    Muestra gráficos de barras actualizados con el tráfico de subida y bajada para cada dispositivo activo.
-
-    Ejemplo: netadmin monitor 192.168.1.1 -d 60 -i 1
-    """
-    # Mostrar comando que se está ejecutando
     console_manager.mostrar_comando_ejecutado(
         f"monitor {ip} --duracion {duracion} --intervalo {intervalo} --cantidad {cantidad}"
     )
+    
+    console_manager.console.print()
 
-    # Escanear la red para obtener dispositivos activos
     with console_manager.console.status(
-        f"[bold {COLORS['primario']}]Escaneando la red para encontrar dispositivos activos...",
-        spinner="dots12",
+        f"[{COLORS['secundario']}]Escaneando la red...", spinner="dots"
     ):
-        # Obtener red base
         red_base = network_scanner.obtener_red_desde_ip(ip)
-        # Escanear dispositivos activos
         dispositivos = network_scanner.escanear_red_especifica(
             ip_red=ip, solo_activos=True, duracion_monitoreo=1
         )
@@ -66,54 +50,64 @@ def comando(
         )
         return
 
-    # Limitar la cantidad de dispositivos
     dispositivos = dispositivos[:cantidad]
     ips = [d["ip"] for d in dispositivos]
+    
+    console_manager.console.print(f"[bold {COLORS['primario']}]⟡ MONITOR DE TRÁFICO[/] [dim {COLORS['texto_dim']}]•[/] [bold {COLORS['secundario']}]{red_base}.0/24[/]")
+    console_manager.console.print()
 
-    # Crear la tabla para mostrar el tráfico
+    console_manager.console.print(
+        f"[{COLORS['secundario']}]•[/] "
+        f"[bold {COLORS['texto']}]Dispositivos:[/] "
+        f"[{COLORS['texto']}]{len(dispositivos)} activos[/]"
+    )
+    
+    console_manager.console.print(
+        f"[{COLORS['secundario']}]•[/] "
+        f"[bold {COLORS['texto']}]Configuración:[/] "
+        f"[{COLORS['texto']}]intervalo: {intervalo}s[/], "
+        f"[{COLORS['texto']}]duración: {duracion}s[/]"
+    )
+    
+    console_manager.console.print()
+    
+    console_manager.console.print(f"[{COLORS['info']}]Iniciando monitoreo. Presiona Ctrl+C para detener.[/]")
+    console_manager.console.print()
+
     def generar_tabla(datos=None):
-        # Usar estilo SIMPLE para tabla más minimalista
         tabla = Table(
-            title=f"Tráfico en Tiempo Real - Red {red_base}.0/24", box=box.SIMPLE
+            box=box.SIMPLE_HEAD,
+            show_header=True,
+            header_style=f"bold {COLORS['primario']}",
+            show_edge=False,
+            padding=(0, 1),
         )
 
-        # Columnas
-        tabla.add_column("IP", style="cyan")
-        tabla.add_column("Dispositivo", style="green")
-        tabla.add_column("MAC", style="magenta")
-        tabla.add_column("Carga (KB/s)", style="yellow", justify="right")
-        tabla.add_column("Descarga (KB/s)", style="blue", justify="right")
-        # Quitar barras visuales para simplificar
-        # tabla.add_column("Barra de Carga", justify="center")
-        # tabla.add_column("Barra de Descarga", justify="center")
+        tabla.add_column("IP", style=f"{COLORS['secundario']}")
+        tabla.add_column("DISPOSITIVO", style=f"{COLORS['texto']}")
+        tabla.add_column("↑", style=f"{COLORS['secundario']}", justify="right")
+        tabla.add_column("↓", style=f"{COLORS['info']}", justify="right")
 
-        # Si no hay datos, mostrar filas vacías
         if not datos:
             for disp in dispositivos:
                 tabla.add_row(
                     disp["ip"],
                     disp["nombre"],
-                    disp["mac"],
-                    "0.00",
-                    "0.00",
-                    # "░" * 10,
-                    # "░" * 10
+                    "0.00 KB/s",
+                    "0.00 KB/s",
                 )
             return tabla
 
-        # Agregar filas con datos
         for dato in datos:
             tabla.add_row(
-                dato.get("ip", "N/A"),
+                Text(dato.get("ip", "N/A"), style=f"bold {COLORS['texto']}"),
                 dato.get("nombre", "Desconocido"),
-                dato.get("mac", "Desconocido"),
-                f"{dato.get('velocidad_carga', 0):.2f}",
-                f"{dato.get('velocidad_descarga', 0):.2f}",
+                f"{dato.get('velocidad_carga', 0):.2f} KB/s",
+                f"{dato.get('velocidad_descarga', 0):.2f} KB/s",
             )
 
         return tabla
 
-    # Información para el panel de estadísticas
     estadisticas = {
         "inicio": time.time(),
         "total_enviado": 0,
@@ -123,54 +117,43 @@ def comando(
         "dispositivo_max_trafico": None,
     }
 
-    # Panel de estadísticas simplificado
     def generar_panel_estadisticas():
         tiempo_transcurrido = time.time() - estadisticas["inicio"]
+        
+        tiempo_format = f"{int(tiempo_transcurrido // 60):02d}:{int(tiempo_transcurrido % 60):02d}"
+        total_enviado_mb = estadisticas["total_enviado"] / 1024
+        total_recibido_mb = estadisticas["total_recibido"] / 1024
 
-        texto = Text()
-        texto.append(f"Tiempo: {tiempo_transcurrido:.1f}s | ", style="bold")
-        texto.append(
-            f"Enviado: {estadisticas['total_enviado'] / 1024:.2f} MB | ", style="yellow"
-        )
-        texto.append(
-            f"Recibido: {estadisticas['total_recibido'] / 1024:.2f} MB | ", style="blue"
-        )
-
+        # Creamos el contenido del panel como una lista de líneas separadas
+        linea1 = f"[bold {COLORS['texto']}]Tiempo:[/] [{COLORS['texto']}]{tiempo_format}[/] • [bold {COLORS['texto']}]Enviado:[/] [{COLORS['secundario']}]{total_enviado_mb:.2f} MB[/]"
+        linea2 = f"[bold {COLORS['texto']}]Recibido:[/] [{COLORS['info']}]{total_recibido_mb:.2f} MB[/]"
+        
         if estadisticas["dispositivo_max_trafico"]:
-            texto.append("Mayor tráfico: ", style="bold")
-            texto.append(f"{estadisticas['dispositivo_max_trafico']}")
+            linea2 += f" • [bold {COLORS['texto']}]Mayor tráfico:[/] [{COLORS['texto']}]{estadisticas['dispositivo_max_trafico']}[/]"
 
-        # Usar Panel simple sin título
-        return Panel(texto, border_style=COLORS["primario"], box=box.SIMPLE)
+        # Usamos una tabla para organizar mejor el contenido
+        return Panel(
+            f"{linea1}\n{linea2}",
+            box=box.SIMPLE,
+            padding=(0, 1),
+            border_style=COLORS["secundario"],
+        )
 
-    # Layout para el panel y la tabla
     def generar_layout(tabla):
         layout = Layout()
         layout.split(
-            Layout(
-                generar_panel_estadisticas(), name="estadisticas", size=3
-            ),  # Reducir tamaño del panel
+            Layout(generar_panel_estadisticas(), name="estadisticas", size=3),
             Layout(tabla, name="tabla"),
         )
         return layout
 
-    # Mostrar instrucciones
-    console_manager.console.print(
-        f"\n[{COLORS['info']}]Iniciando monitoreo. Presiona Ctrl+C para detener.[/]\n"
-    )
-
-    # Usar Live para actualizar la tabla en tiempo real
     try:
-        # Inicializar tabla
         with Live(generar_layout(generar_tabla()), refresh_per_second=4) as live:
-            # Obtener datos en tiempo real
             monitor = network_monitor.monitorear_trafico_tiempo_real(
                 ips=ips, intervalo=intervalo, duracion_total=duracion
             )
 
-            # Actualizar la tabla con los datos nuevos
             for datos in monitor:
-                # Actualizar estadísticas
                 if datos:
                     for dato in datos:
                         estadisticas["total_enviado"] += dato.get(
@@ -180,7 +163,6 @@ def comando(
                             "bytes_recibidos_inc", 0
                         )
 
-                        # Actualizar velocidades máximas
                         velocidad_carga = dato.get("velocidad_carga", 0)
                         velocidad_descarga = dato.get("velocidad_descarga", 0)
 
@@ -190,7 +172,6 @@ def comando(
                         if velocidad_descarga > estadisticas["max_descarga"]:
                             estadisticas["max_descarga"] = velocidad_descarga
 
-                        # Actualizar dispositivo con mayor tráfico
                         trafico_total = velocidad_carga + velocidad_descarga
                         if estadisticas[
                             "dispositivo_max_trafico"
@@ -202,11 +183,31 @@ def comando(
                                 f"{dato['ip']} ({dato['nombre']})"
                             )
 
-                # Actualizar la tabla en vivo
                 live.update(generar_layout(generar_tabla(datos)))
     except KeyboardInterrupt:
-        # Si el usuario detiene el monitoreo con Ctrl+C
-        console_manager.console.print("\n")
-        console_manager.mostrar_exito(
-            f"Monitoreo finalizado ({time.time() - estadisticas['inicio']:.1f}s). Total: {estadisticas['total_enviado'] / 1024:.2f} MB enviados, {estadisticas['total_recibido'] / 1024:.2f} MB recibidos."
+        console_manager.console.print()
+
+        tiempo_total = time.time() - estadisticas["inicio"]
+        
+        console_manager.console.print(f"[bold {COLORS['primario']}]⟡ RESUMEN DE MONITOREO[/]")
+        console_manager.console.print()
+        
+        console_manager.console.print(
+            f"[{COLORS['secundario']}]•[/] "
+            f"[bold {COLORS['texto']}]Duración:[/] "
+            f"[{COLORS['texto']}]{tiempo_total:.1f}s[/]"
         )
+        
+        console_manager.console.print(
+            f"[{COLORS['secundario']}]•[/] "
+            f"[bold {COLORS['texto']}]Datos transferidos:[/] "
+            f"[{COLORS['secundario']}]{estadisticas['total_enviado'] / 1024:.2f} MB[/] enviados, "
+            f"[{COLORS['info']}]{estadisticas['total_recibido'] / 1024:.2f} MB[/] recibidos"
+        )
+        
+        if estadisticas["dispositivo_max_trafico"]:
+            console_manager.console.print(
+                f"[{COLORS['secundario']}]•[/] "
+                f"[bold {COLORS['texto']}]Mayor actividad:[/] "
+                f"[{COLORS['texto']}]{estadisticas['dispositivo_max_trafico']}[/]"
+            )

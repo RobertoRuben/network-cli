@@ -1,55 +1,46 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-"""
-Configuraciones centralizadas para la aplicación NetAdmin CLI.
-"""
-
-# Configuración general
 APP_NAME = "NetAdmin CLI"
 APP_VERSION = "0.1.0"
-APP_DESCRIPTION = "Herramienta de línea de comandos para administración de red con animaciones"
+APP_DESCRIPTION = "Herramienta para administración de red"
 
-# Configuración de colores
 COLORS = {
-    "primario": "blue",
-    "secundario": "green",
-    "advertencia": "yellow",
-    "error": "red",
-    "info": "cyan",
-    "exito": "green",
+    "primario": "#38b2ac",  # Teal moderno
+    "secundario": "#4fd1c5",  # Teal claro
+    "advertencia": "#f6ad55",  # Naranja pastel
+    "error": "#fc8181",  # Coral suave
+    "info": "#63b3ed",  # Azul cielo
+    "exito": "#68d391",  # Verde menta
+    "texto": "#f7fafc",  # Blanco muy suave
+    "texto_dim": "#cbd5e0",  # Gris claro
+    "fondo": "#1a202c",  # Gris azulado oscuro
+    "acento": "#9f7aea",  # Púrpura pastel
 }
 
-# Configuración de red
 NETWORK_CONFIG = {
-    "timeout_ping": 1.0,  # Segundos
-    "timeout_scan": 5.0,  # Segundos para escaneo de red
-    "default_scan_range": "0/24",  # Rango CIDR para escaneo predeterminado
+    "timeout_ping": 1.0,  
+    "timeout_scan": 5.0,  
+    "default_scan_range": "0/24",  
 }
 
-# Configuración de prueba de velocidad
 SPEEDTEST_CONFIG = {
     "force_json": True,
     "include_ping": True,
-    "servers": [],  # Lista vacía para seleccionar automáticamente el mejor servidor
+    "servers": [], 
 }
 
-# Animaciones y estilos
 ANIMATION_STYLES = {
-    "carga": "dots",
-    "progreso": "dots10",
-    "ping": "dots12",
+    "carga": "arc",  
+    "progreso": "line",  
+    "ping": "dots",  
+    "scan": "point",  
 }
 
-# Límites y valores predeterminados
 DEFAULTS = {
     "dispositivos_max": 10,
-    "trafico_duracion": 10,  # Segundos
+    "trafico_duracion": 10,  
 }
 
-# Configuración de tablas
 TABLE_STYLES = {
-    "box": "ROUNDED",
-    "header_style": "bold cyan",
-    "row_styles": ["dim", ""]  # Estilos alternantes para filas
+    "box": "SIMPLE",  
+    "header_style": f"bold {COLORS['primario']}",
+    "row_styles": ["", "dim"],  
 }

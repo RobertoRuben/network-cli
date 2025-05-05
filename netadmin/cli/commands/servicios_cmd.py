@@ -1,17 +1,12 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-"""
-Comando para detectar servicios en ejecución en un host.
-"""
-
 import typer
-from rich.panel import Panel
+from rich import box
+from rich.table import Table
+from rich.text import Text
 
 from netadmin.cli import app
 from netadmin.utils.console import console_manager
 from netadmin.core.network import network_scanner, NMAP_INFO
-from netadmin.config.settings import COLORS, ANIMATION_STYLES
+from netadmin.config.settings import COLORS
 
 
 @app.command("servicios", help="Detectar servicios en ejecución en un host")
@@ -21,44 +16,41 @@ def comando(
         False, "--profundo", "-p", help="Realizar un escaneo más detallado de versiones"
     ),
 ):
-    """Detecta servicios en ejecución en un host y muestra información detallada.
-
-    Ejemplo: netadmin servicios 192.168.1.1 --profundo
-    """
-    # Mostrar comando que se está ejecutando
     comando_str = f"servicios {host}"
     if escaneo_profundo:
         comando_str += " --profundo"
     console_manager.mostrar_comando_ejecutado(comando_str)
 
-    # Verificar si nmap está disponible
-    console_manager.mostrar_estado_nmap(NMAP_INFO)
+    console_manager.console.print()
 
-    if not NMAP_INFO["disponible"]:
+    if NMAP_INFO["disponible"]:
+        console_manager.console.print(
+            f"[{COLORS['secundario']}]•[/] [{COLORS['texto_dim']}]Usando Nmap {NMAP_INFO['version']}[/]"
+        )
+    else:
+        console_manager.console.print(
+            f"[{COLORS['advertencia']}]•[/] [{COLORS['texto_dim']}]{NMAP_INFO['mensaje']}[/]"
+        )
         console_manager.mostrar_error("Esta funcionalidad requiere nmap.")
         return
+
+    console_manager.console.print()
 
     try:
         import nmap
 
         scanner = nmap.PortScanner()
 
-        # Determinar los argumentos según el tipo de escaneo
         arguments = "-sV" if escaneo_profundo else "-sV --version-intensity 2"
 
-        # Realizar el escaneo con animación
         with console_manager.console.status(
-            f"[bold {COLORS['primario']}]Detectando servicios en {host}...",
-            spinner=ANIMATION_STYLES["carga"],
+            f"[{COLORS['secundario']}]Detectando servicios en {host}...", spinner="dots"
         ):
             scanner.scan(hosts=host, arguments=arguments)
 
-        # Verificar si el host se encontró en los resultados
         if host not in scanner.all_hosts():
             console_manager.mostrar_advertencia(f"No se pudo acceder al host {host}")
             return
-
-        # Obtener información del host
         try:
             nombre_host = scanner[host].hostname()
             os_match = (
@@ -70,32 +62,71 @@ def comando(
             nombre_host = "Desconocido"
             os_match = "Desconocido"
 
-        # Mostrar información general del host (simplificado)
-        console_manager.datos_formateados(
-            "Información del Host",
-            {
-                "Nombre": nombre_host,
-                "IP": host,
-                "OS (estimado)": os_match,
-                "Estado": scanner[host].state(),
-            },
-            estilo="lista",
+        console_manager.console.print(
+            f"[bold {COLORS['primario']}]⟡ SERVICIOS EN HOST[/] [dim {COLORS['texto_dim']}]•[/] [bold {COLORS['secundario']}]{host}[/]"
+        )
+        console_manager.console.print()
+
+        console_manager.console.print(
+            f"[{COLORS['secundario']}]•[/] "
+            f"[bold {COLORS['texto']}]Host:[/] "
+            f"[{COLORS['texto']}]{host}[/]"
+            + (
+                f" [{COLORS['texto_dim']}]({nombre_host})[/]"
+                if nombre_host != "Desconocido"
+                else ""
+            )
         )
 
-        # Crear tabla para los servicios detectados
-        columnas = [
-            {"nombre": "Puerto", "estilo": "cyan"},
-            {"nombre": "Servicio", "estilo": "green"},
-            {"nombre": "Versión", "estilo": "yellow"},
-            {"nombre": "Detalles", "estilo": "magenta"},
-        ]
+        console_manager.console.print(
+            f"[{COLORS['secundario']}]•[/] "
+            f"[bold {COLORS['texto']}]Estado:[/] "
+            f"[{COLORS['texto']}]{scanner[host].state()}[/]"
+        )
 
-        tabla = console_manager.crear_tabla("Servicios Detectados", columnas)
+        if os_match != "Desconocido":
+            console_manager.console.print(
+                f"[{COLORS['secundario']}]•[/] "
+                f"[bold {COLORS['texto']}]OS (estimado):[/] "
+                f"[{COLORS['texto']}]{os_match}[/]"
+            )
 
-        # Contador de servicios encontrados
+        console_manager.console.print(
+            f"[{COLORS['secundario']}]•[/] "
+            f"[bold {COLORS['texto']}]Tipo escaneo:[/] "
+            f"[{COLORS['texto']}]{'Profundo' if escaneo_profundo else 'Estándar'}[/]"
+        )
+
+        console_manager.console.print()
+
+        tabla = Table(
+            box=box.SIMPLE_HEAD,
+            show_header=True,
+            header_style=f"bold {COLORS['primario']}",
+            show_edge=False,
+            padding=(0, 1),
+        )
+
+        tabla.add_column("PUERTO", style=f"{COLORS['secundario']}")
+        tabla.add_column("SERVICIO", style=f"{COLORS['texto']}")
+        tabla.add_column("VERSIÓN", style=f"{COLORS['texto']}")
+        tabla.add_column("DETALLES", style=f"{COLORS['texto_dim']}")
+
         servicios_encontrados = 0
+        puertos_abiertos = []
+        servicios_riesgosos = {
+            "ftp": [],
+            "telnet": [],
+            "smtp": [],
+            "dns": [],
+            "http": [],
+            "pop3": [],
+            "smb": [],
+            "microsoft-ds": [],
+            "netbios-ssn": [],
+            "ms-sql": [],
+        }
 
-        # Agregar servicios a la tabla
         for proto in scanner[host].all_protocols():
             puertos = sorted(scanner[host][proto].keys())
 
@@ -103,22 +134,28 @@ def comando(
                 info = scanner[host][proto][puerto]
                 estado = info["state"]
 
-                # Solo mostrar puertos abiertos
                 if estado != "open":
                     continue
 
                 servicios_encontrados += 1
+                puertos_abiertos.append(f"{puerto}/{proto}")
 
-                # Obtener información del servicio
                 nombre = info.get("name", "desconocido")
                 producto = info.get("product", "")
                 version = info.get("version", "")
                 extra = info.get("extrainfo", "")
 
-                # Formatear versión
                 version_completa = f"{producto} {version}".strip()
 
-                tabla.add_row(f"{puerto}/{proto}", nombre, version_completa, extra)
+                if nombre in servicios_riesgosos:
+                    servicios_riesgosos[nombre].append(f"{puerto}/{proto}")
+
+                tabla.add_row(
+                    f"{puerto}/{proto}",
+                    Text(nombre, style="bold"),
+                    version_completa,
+                    extra,
+                )
 
         if servicios_encontrados == 0:
             console_manager.mostrar_advertencia(
@@ -126,44 +163,34 @@ def comando(
             )
             return
 
-        # Mostrar tabla con los servicios encontrados
-        console_manager.console.print(tabla)
-
-        # Mostrar resumen conciso
-        console_manager.mostrar_exito(
-            f"Detección completada: {servicios_encontrados} servicios encontrados en {host}."
+        console_manager.console.print(
+            f"[{COLORS['secundario']}]•[/] "
+            f"[bold {COLORS['texto']}]Servicios:[/] "
+            f"[{COLORS['texto']}]{servicios_encontrados} encontrados[/]"
         )
 
-        # Mostrar información sobre servicios potencialmente vulnerables (simplificado)
-        servicios_riesgosos = [
-            "ftp",
-            "telnet",
-            "smtp",
-            "dns",
-            "http",
-            "pop3",
-            "smb",
-            "microsoft-ds",
-            "netbios-ssn",
-            "ms-sql",
-        ]
-        servicios_encontrados_riesgosos = []
+        console_manager.console.print()
 
-        for proto in scanner[host].all_protocols():
-            for puerto in scanner[host][proto].keys():
-                servicio = scanner[host][proto][puerto].get("name", "").lower()
-                if (
-                    servicio in servicios_riesgosos
-                    and scanner[host][proto][puerto]["state"] == "open"
-                ):
-                    servicios_encontrados_riesgosos.append(
-                        f"{servicio} ({puerto}/{proto})"
-                    )
+        console_manager.console.print(tabla)
+        console_manager.console.print()
+
+        servicios_encontrados_riesgosos = []
+        for servicio, puertos in servicios_riesgosos.items():
+            if puertos:
+                servicios_encontrados_riesgosos.append(
+                    f"{servicio} ({', '.join(puertos)})"
+                )
 
         if servicios_encontrados_riesgosos:
             console_manager.console.print(
-                f"[{COLORS['advertencia']}]Servicios potencialmente vulnerables:[/] {', '.join(servicios_encontrados_riesgosos)}"
+                f"[bold {COLORS['advertencia']}]⚠ SERVICIOS POTENCIALMENTE VULNERABLES[/]"
             )
+            console_manager.console.print()
+
+            for servicio in servicios_encontrados_riesgosos:
+                console_manager.console.print(
+                    f"[{COLORS['advertencia']}]•[/] [{COLORS['texto']}]{servicio}[/]"
+                )
 
     except Exception as e:
         console_manager.mostrar_error(f"Error al detectar servicios en {host}", str(e))

@@ -1,13 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-"""
-Comando para mostrar los dispositivos conectados en la red local.
-"""
-
 import typer
 from rich import box
 from rich.table import Table
+from rich.text import Text
 
 from netadmin.cli import app
 from netadmin.utils.console import console_manager
@@ -21,15 +15,23 @@ def comando(
         DEFAULTS["dispositivos_max"], help="Cantidad máxima de dispositivos a mostrar"
     )
 ):
-    """Muestra los dispositivos conectados en la red local."""
-    # Mostrar comando que se está ejecutando
     console_manager.mostrar_comando_ejecutado(f"dispositivos --cantidad {cantidad}")
+    
+    console_manager.console.print()
 
-    # Mostrar estado de nmap antes de escanear
-    console_manager.mostrar_estado_nmap(NMAP_INFO)
+    if NMAP_INFO["disponible"]:
+        console_manager.console.print(
+            f"[{COLORS['secundario']}]•[/] [{COLORS['texto_dim']}]Usando Nmap {NMAP_INFO['version']}[/]"
+        )
+    else:
+        console_manager.console.print(
+            f"[{COLORS['advertencia']}]•[/] [{COLORS['texto_dim']}]{NMAP_INFO['mensaje']}[/]"
+        )
+    
+    console_manager.console.print()
 
     with console_manager.console.status(
-        "[bold green]Escaneando la red...", spinner="dots10"
+        f"[{COLORS['secundario']}]Escaneando la red...", spinner="dots"
     ):
         dispositivos = network_scanner.escanear_red(cantidad_max=cantidad)
 
@@ -37,29 +39,53 @@ def comando(
         console_manager.mostrar_advertencia("No se encontraron dispositivos en la red.")
         return
 
-    # Crear tabla para dispositivos
-    columnas = [
-        {"nombre": "IP", "estilo": "cyan"},
-        {"nombre": "Nombre", "estilo": "green"},
-        {"nombre": "MAC", "estilo": "magenta"},
-        {"nombre": "Estado", "estilo": "yellow"},
-    ]
-    tabla = console_manager.crear_tabla("Dispositivos Conectados", columnas)
+    console_manager.console.print(f"[bold {COLORS['primario']}]⟡ DISPOSITIVOS EN RED[/]")
+    console_manager.console.print()
 
-    # Agregar los dispositivos a la tabla
+    activos = sum(1 for d in dispositivos if d["estado"] == "up")
+    inactivos = len(dispositivos) - activos
+
+    console_manager.console.print(
+        f"[{COLORS['secundario']}]•[/] "
+        f"[bold {COLORS['texto']}]Total:[/] "
+        f"[{COLORS['texto']}]{len(dispositivos)} dispositivos[/]"
+    )
+    
+    console_manager.console.print(
+        f"[{COLORS['secundario']}]•[/] "
+        f"[bold {COLORS['texto']}]Estado:[/] "
+        f"[{COLORS['texto']}]{activos} activos[/], "
+        f"[{COLORS['texto_dim']}]{inactivos} inactivos[/]"
+    )
+
+    console_manager.console.print()
+
+    tabla = Table(
+        box=box.SIMPLE_HEAD,
+        show_header=True,
+        header_style=f"bold {COLORS['primario']}",
+        show_edge=False,
+        padding=(0, 1),
+    )
+    
+    tabla.add_column("IP", style=f"{COLORS['secundario']}")
+    tabla.add_column("NOMBRE", style=f"{COLORS['texto']}")
+    tabla.add_column("MAC", style=f"{COLORS['texto_dim']}")
+    tabla.add_column("ESTADO", style=f"{COLORS['texto']}")
+
     for dispositivo in dispositivos:
+        estado = dispositivo["estado"]
+        estado_formateado = (
+            f"[{COLORS['exito']}]activo[/]"
+            if estado == "up"
+            else f"[{COLORS['texto_dim']}]inactivo[/]"
+        )
+            
         tabla.add_row(
-            dispositivo["ip"],
+            Text(dispositivo["ip"], style=f"bold {COLORS['texto']}"),
             dispositivo["nombre"],
             dispositivo["mac"],
-            (
-                f"[green]Activo[/]"
-                if dispositivo["estado"] == "up"
-                else f"[{COLORS['error']}]Inactivo[/]"
-            ),
+            estado_formateado,
         )
 
     console_manager.console.print(tabla)
-
-    # Mostrar información adicional concisa
-    console_manager.mostrar_exito(f"Se encontraron {len(dispositivos)} dispositivos.")

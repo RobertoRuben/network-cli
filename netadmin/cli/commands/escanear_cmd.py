@@ -1,16 +1,13 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-"""
-Comando para escanear redes específicas y mostrar información detallada sobre dispositivos.
-"""
-
 import typer
 from typing import Optional
+from rich import box
+from rich.table import Table
+from rich.text import Text
+
 from netadmin.cli import app
 from netadmin.utils.console import console_manager
 from netadmin.core.network import network_scanner, NMAP_INFO
-from netadmin.config.settings import COLORS, ANIMATION_STYLES
+from netadmin.config.settings import COLORS
 
 
 @app.command("escanear", help="Escanear una red específica y mostrar dispositivos")
@@ -25,23 +22,27 @@ def comando(
         5, "--duracion", "-d", help="Duración del monitoreo de tráfico en segundos"
     ),
 ):
-    """Escanea una red específica basada en una IP proporcionada y muestra información detallada de dispositivos.
-
-    Ejemplo: netadmin escanear 192.168.1.35
-    """
-    # Mostrar comando que se está ejecutando
     comando_str = f"escanear {ip}"
     if solo_activos:
         comando_str += " --activos"
     comando_str += f" --duracion {duracion}"
     console_manager.mostrar_comando_ejecutado(comando_str)
+    
+    console_manager.console.print()
 
-    # Mostrar estado de nmap antes de escanear
-    console_manager.mostrar_estado_nmap(NMAP_INFO)
+    if NMAP_INFO["disponible"]:
+        console_manager.console.print(
+            f"[{COLORS['secundario']}]•[/] [{COLORS['texto_dim']}]Usando Nmap {NMAP_INFO['version']}[/]"
+        )
+    else:
+        console_manager.console.print(
+            f"[{COLORS['advertencia']}]•[/] [{COLORS['texto_dim']}]{NMAP_INFO['mensaje']}[/]"
+        )
+    
+    console_manager.console.print()
 
     with console_manager.console.status(
-        f"[bold {COLORS['primario']}]Realizando escaneo detallado de red...",
-        spinner=ANIMATION_STYLES["carga"],
+        f"[{COLORS['secundario']}]Escaneando la red...", spinner="dots"
     ):
         dispositivos = network_scanner.escanear_red_especifica(
             ip_red=ip, solo_activos=solo_activos, duracion_monitoreo=duracion
@@ -54,64 +55,85 @@ def comando(
         )
         return
 
-    # Crear tabla para mostrar la información detallada
-    columnas = [
-        {"nombre": "IP", "estilo": "cyan"},
-        {"nombre": "MAC", "estilo": "magenta"},
-        {"nombre": "Dispositivo", "estilo": "green"},
-        {"nombre": "Subida (KB/s)", "estilo": "yellow", "alineacion": "right"},
-        {"nombre": "Descarga (KB/s)", "estilo": "blue", "alineacion": "right"},
-        {"nombre": "Estado", "estilo": "bold", "alineacion": "center"},
-    ]
+    red_base = ip.rsplit('.', 1)[0]
+    console_manager.console.print(f"[bold {COLORS['primario']}]⟡ ESCANEO DE RED[/] [dim {COLORS['texto_dim']}]•[/] [bold {COLORS['secundario']}]{red_base}.0/24[/]")
+    console_manager.console.print()
 
-    tabla = console_manager.crear_tabla(
-        f"Dispositivos de Red - {ip.rsplit('.', 1)[0]}.0/24", columnas
+    dispositivos_activos = sum(1 for d in dispositivos if d["estado"] == "up")
+    dispositivos_inactivos = len(dispositivos) - dispositivos_activos
+    
+    console_manager.console.print(
+        f"[{COLORS['secundario']}]•[/] "
+        f"[bold {COLORS['texto']}]Total:[/] "
+        f"[{COLORS['texto']}]{len(dispositivos)} dispositivos[/]"
     )
+    
+    console_manager.console.print(
+        f"[{COLORS['secundario']}]•[/] "
+        f"[bold {COLORS['texto']}]Estado:[/] "
+        f"[{COLORS['texto']}]{dispositivos_activos} activos[/], "
+        f"[{COLORS['texto_dim']}]{dispositivos_inactivos} inactivos[/]"
+    )
+    
+    console_manager.console.print(
+        f"[{COLORS['secundario']}]•[/] "
+        f"[bold {COLORS['texto']}]Monitoreo:[/] "
+        f"[{COLORS['texto']}]{duracion}s[/]"
+    )
+    
+    console_manager.console.print()
 
-    # Añadir dispositivos a la tabla
-    dispositivos_activos = 0
+    tabla = Table(
+        box=box.SIMPLE_HEAD,
+        show_header=True,
+        header_style=f"bold {COLORS['primario']}",
+        show_edge=False,
+        padding=(0, 1),
+    )
+    
+    tabla.add_column("IP", style=f"{COLORS['secundario']}")
+    tabla.add_column("NOMBRE", style=f"{COLORS['texto']}")
+    tabla.add_column("MAC", style=f"{COLORS['texto_dim']}")
+    tabla.add_column("↑", style=f"{COLORS['secundario']}", justify="right")
+    tabla.add_column("↓", style=f"{COLORS['info']}", justify="right")
+    tabla.add_column("ESTADO", style=f"{COLORS['texto']}")
+
     for dispositivo in dispositivos:
         estado = dispositivo["estado"]
         estado_formateado = (
-            f"[green]Activo[/]" if estado == "up" else f"[{COLORS['error']}]Inactivo[/]"
+            f"[{COLORS['exito']}]activo[/]"
+            if estado == "up"
+            else f"[{COLORS['texto_dim']}]inactivo[/]"
         )
-
-        if estado == "up":
-            dispositivos_activos += 1
-
+            
         tabla.add_row(
-            dispositivo["ip"],
-            dispositivo["mac"],
+            Text(dispositivo["ip"], style=f"bold {COLORS['texto']}"),
             dispositivo["nombre"],
-            f"{dispositivo['velocidad_subida']:.2f}",
-            f"{dispositivo['velocidad_descarga']:.2f}",
+            dispositivo["mac"],
+            f"{dispositivo['velocidad_subida']:.2f} KB/s",
+            f"{dispositivo['velocidad_descarga']:.2f} KB/s",
             estado_formateado,
         )
 
     console_manager.console.print(tabla)
+    console_manager.console.print()
 
-    # Mostrar información adicional concisa
-    total_dispositivos = len(dispositivos)
-    console_manager.mostrar_exito(
-        f"Escaneo completado: {dispositivos_activos} activos de {total_dispositivos} encontrados."
-    )
-
-    # Mostrar notas sobre el tráfico de forma más concisa
-    console_manager.console.print(
-        f"[{COLORS['info']}]Nota:[/] Velocidades aprox. durante {duracion}s."
-    )
-
-    # Si se encontró algún dispositivo, mostrar el que más tráfico genera
     if dispositivos_activos > 0:
-        dispositivo_mas_trafico = max(
-            [d for d in dispositivos if d["estado"] == "up"],
-            key=lambda x: x["velocidad_subida"] + x["velocidad_descarga"],
-        )
-
-        console_manager.console.print(
-            f"Mayor tráfico: [bold cyan]{dispositivo_mas_trafico['ip']}[/] "
-            f"({dispositivo_mas_trafico['velocidad_subida'] + dispositivo_mas_trafico['velocidad_descarga']:.2f} KB/s)"
-        )
+        try:
+            max_trafico = max(
+                [d for d in dispositivos if d["estado"] == "up"],
+                key=lambda x: x["velocidad_subida"] + x["velocidad_descarga"]
+            )
+            trafico_total = max_trafico["velocidad_subida"] + max_trafico["velocidad_descarga"]
+            
+            console_manager.console.print(
+                f"[{COLORS['secundario']}]•[/] "
+                f"[bold {COLORS['texto']}]Mayor actividad:[/] "
+                f"[{COLORS['texto']}]{max_trafico['ip']}[/] "
+                f"[dim {COLORS['texto_dim']}]({trafico_total:.2f} KB/s)[/]"
+            )
+        except Exception:
+            pass
 
 
 @app.command("activos", help="Mostrar solo dispositivos activos en una red")
@@ -123,15 +145,6 @@ def activos(
         3, "--duracion", "-d", help="Duración del monitoreo de tráfico en segundos"
     ),
 ):
-    """Escanea una red específica y muestra solo los dispositivos activos.
-
-    Ejemplo: netadmin activos 192.168.1.1
-    """
-    # Mostrar comando que se está ejecutando
     console_manager.mostrar_comando_ejecutado(f"activos {ip} --duracion {duracion}")
 
-    # Mostrar estado de nmap antes de escanear
-    # console_manager.mostrar_estado_nmap(NMAP_INFO) # Ya se muestra dentro de la función 'comando'
-
-    # Reutilizamos la función principal con solo_activos=True
     comando(ip=ip, solo_activos=True, duracion=duracion)

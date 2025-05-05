@@ -1,13 +1,5 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-"""
-Comando para mostrar información básica de la configuración de red.
-"""
-
-import typer
-from rich.columns import Columns
-from rich.panel import Panel
+from rich import box
+from rich.table import Table
 
 from netadmin.cli import app
 from netadmin.utils.console import console_manager
@@ -17,44 +9,65 @@ from netadmin.config.settings import COLORS
 
 @app.command("info", help="Mostrar información básica de red")
 def comando():
-    """Muestra información básica de la configuración de red."""
-    # Mostrar comando que se está ejecutando
     console_manager.mostrar_comando_ejecutado("info")
+    
+    console_manager.console.print()
 
-    # Obtener información con animación más corta
-    console_manager.mostrar_animacion_carga("Obteniendo información de red", duracion=1)
+    with console_manager.console.status(
+        f"[{COLORS['secundario']}]Obteniendo información de red...", spinner="dots"
+    ):
+        info_red = network_monitor.obtener_info_red()
 
-    # Recopilar información de red
-    info_red = network_monitor.obtener_info_red()
+    console_manager.console.print(f"[bold {COLORS['primario']}]⟡ INFORMACIÓN DE RED[/]")
+    console_manager.console.print()
 
-    # Mostrar información básica
-    console_manager.datos_formateados(
-        "Información Básica",
-        {
-            "IP Local": info_red["ip_local"],
-            "Nombre del equipo": info_red["hostname"],
-            "Interfaces activas": sum(1 for i in info_red["interfaces"] if i["activa"]),
-            "Total interfaces": len(info_red["interfaces"]),
-        },
+    console_manager.console.print(
+        f"[{COLORS['secundario']}]•[/] "
+        f"[bold {COLORS['texto']}]IP Local:[/] "
+        f"[{COLORS['texto']}]{info_red['ip_local']}[/]"
     )
+    
+    console_manager.console.print(
+        f"[{COLORS['secundario']}]•[/] "
+        f"[bold {COLORS['texto']}]Equipo:[/] "
+        f"[{COLORS['texto']}]{info_red['hostname']}[/]"
+    )
+    
+    interfaces_activas = sum(1 for i in info_red["interfaces"] if i["activa"])
+    console_manager.console.print(
+        f"[{COLORS['secundario']}]•[/] "
+        f"[bold {COLORS['texto']}]Interfaces:[/] "
+        f"[{COLORS['texto']}]{interfaces_activas} activas[/] "
+        f"[{COLORS['texto_dim']}](de {len(info_red['interfaces'])})[/]"
+    )
+    
+    console_manager.console.print()
 
-    # Mostrar detalles de interfaces en formato de tabla conciso
-    columnas = [
-        {"nombre": "Nombre", "estilo": "cyan"},
-        {"nombre": "IP", "estilo": "green"},
-        {"nombre": "MAC", "estilo": "magenta"},
-        {"nombre": "Estado", "estilo": "yellow"},
-    ]
-    tabla = console_manager.crear_tabla("Interfaces de Red", columnas)
+    tabla = Table(
+        box=box.SIMPLE_HEAD,
+        show_header=True,
+        header_style=f"bold {COLORS['primario']}",
+        show_edge=False,
+        padding=(0, 1),
+    )
+    
+    tabla.add_column("NOMBRE", style=f"{COLORS['secundario']}")
+    tabla.add_column("IP", style=f"{COLORS['texto']}")
+    tabla.add_column("MAC", style=f"{COLORS['texto_dim']}")
+    tabla.add_column("ESTADO", style=f"{COLORS['texto']}")
 
-    # Agregar información de interfaces a la tabla
     for interfaz in info_red["interfaces"]:
         estado = (
-            f"[green]Activo[/]"
+            f"[{COLORS['exito']}]activa[/]"
             if interfaz["activa"]
-            else f"[{COLORS['error']}]Inactivo[/]"
+            else f"[{COLORS['texto_dim']}]inactiva[/]"
         )
-
-        tabla.add_row(interfaz["nombre"], interfaz["ipv4"], interfaz["mac"], estado)
+        
+        tabla.add_row(
+            interfaz["nombre"],
+            interfaz["ipv4"],
+            interfaz["mac"],
+            estado
+        )
 
     console_manager.console.print(tabla)
