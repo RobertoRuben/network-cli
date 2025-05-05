@@ -113,8 +113,8 @@ def comando(
                 info_puerto = scanner[host][proto][puerto]
 
                 # Buscar scripts relacionados con vulnerabilidades
-                if 'script' in info_puerto:
-                    for script_name, data in info_puerto['script'].items():
+                if "script" in info_puerto:
+                    for script_name, data in info_puerto["script"].items():
                         vuln_encontradas += 1
 
                         # Analizar severidad basada en palabras clave
@@ -122,11 +122,25 @@ def comando(
                         detalles = str(data)
 
                         # Palabras clave para determinar la severidad
-                        if any(kw in detalles.lower() for kw in ["critical", "crítico", "remote code execution", "rce"]):
+                        if any(
+                            kw in detalles.lower()
+                            for kw in [
+                                "critical",
+                                "crítico",
+                                "remote code execution",
+                                "rce",
+                            ]
+                        ):
                             severidad = "[bold red]Crítica[/]"
-                        elif any(kw in detalles.lower() for kw in ["high", "alta", "bypass", "overflow"]):
+                        elif any(
+                            kw in detalles.lower()
+                            for kw in ["high", "alta", "bypass", "overflow"]
+                        ):
                             severidad = "[bold orange]Alta[/]"
-                        elif any(kw in detalles.lower() for kw in ["medium", "media", "information disclosure"]):
+                        elif any(
+                            kw in detalles.lower()
+                            for kw in ["medium", "media", "information disclosure"]
+                        ):
                             severidad = "[yellow]Media[/]"
 
                         # Agregar a la tabla

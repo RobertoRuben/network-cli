@@ -78,13 +78,13 @@ def comando(
         "Información de la Red",
         {
             "Red": f"{info_red['network_address']}{info_red['cidr']}",
-            "Broadcast": info_red['broadcast_address'],
-            "Máscara": info_red['netmask'],
-            "Gateway (est)": info_red['gateway'],
-            "DNS": ', '.join(info_red['dns_servers']),
-            "Total IPs": str(info_red['total_ips']),
+            "Broadcast": info_red["broadcast_address"],
+            "Máscara": info_red["netmask"],
+            "Gateway (est)": info_red["gateway"],
+            "DNS": ", ".join(info_red["dns_servers"]),
+            "Total IPs": str(info_red["total_ips"]),
         },
-        estilo="lista"
+        estilo="lista",
     )
 
     # Obtener lista total de IPs (exceptuando red y broadcast)

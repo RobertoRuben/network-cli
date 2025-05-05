@@ -43,9 +43,7 @@ def comando(
         {"nombre": "Vel. Carga", "estilo": "magenta", "alineacion": "right"},
         {"nombre": "Vel. Descarga", "estilo": "blue", "alineacion": "right"},
     ]
-    tabla = console_manager.crear_tabla(
-        f"Tráfico de Red ({duracion}s)", columnas
-    )
+    tabla = console_manager.crear_tabla(f"Tráfico de Red ({duracion}s)", columnas)
 
     # Total para estadísticas
     total_enviado = 0

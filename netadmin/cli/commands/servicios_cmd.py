@@ -79,7 +79,7 @@ def comando(
                 "OS (estimado)": os_match,
                 "Estado": scanner[host].state(),
             },
-            estilo="lista"
+            estilo="lista",
         )
 
         # Crear tabla para los servicios detectados
@@ -136,8 +136,16 @@ def comando(
 
         # Mostrar información sobre servicios potencialmente vulnerables (simplificado)
         servicios_riesgosos = [
-            "ftp", "telnet", "smtp", "dns", "http", "pop3", "smb",
-            "microsoft-ds", "netbios-ssn", "ms-sql",
+            "ftp",
+            "telnet",
+            "smtp",
+            "dns",
+            "http",
+            "pop3",
+            "smb",
+            "microsoft-ds",
+            "netbios-ssn",
+            "ms-sql",
         ]
         servicios_encontrados_riesgosos = []
 

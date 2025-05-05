@@ -39,7 +39,9 @@ def comando(
     """
     # Mostrar comando que se está ejecutando
     duracion_str = "continua" if duracion == 0 else f"{duracion}s"
-    console_manager.mostrar_comando_ejecutado(f"estadisticas --duracion {duracion_str} --intervalo {intervalo}")
+    console_manager.mostrar_comando_ejecutado(
+        f"estadisticas --duracion {duracion_str} --intervalo {intervalo}"
+    )
 
     # Inicializar contadores
     io_inicial = psutil.net_io_counters(pernic=True)
@@ -121,7 +123,7 @@ def comando(
         info_panel = Panel(
             f"[bold]Hora:[/] {ahora} | [bold]Tiempo:[/] {int(tiempo_transcurrido)}s | [bold]Interfaces activas:[/] {len(interfaces_activas)}",
             border_style=COLORS["primario"],
-            box=box.SIMPLE # Usar borde simple
+            box=box.SIMPLE,  # Usar borde simple
         )
 
         # Crear un layout para organizar todo
@@ -135,7 +137,7 @@ def comando(
             mensaje_espera = Panel(
                 "[italic]Esperando actividad en las interfaces de red...[/]",
                 border_style=COLORS["advertencia"],
-                box=box.SIMPLE
+                box=box.SIMPLE,
             )
             layout["main"].update(mensaje_espera)
 
