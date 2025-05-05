@@ -22,10 +22,12 @@ def comando(
     
     Ejemplo: netadmin escanear 192.168.1.35
     """
-    console_manager.mostrar_titulo(
-        f"Escáner Detallado de Red",
-        f"IP base: {ip} | {'Solo activos' if solo_activos else 'Todos los hosts'}"
-    )
+    # Mostrar comando que se está ejecutando
+    comando_str = f"escanear {ip}"
+    if solo_activos:
+        comando_str += " --activos"
+    comando_str += f" --duracion {duracion}"
+    console_manager.mostrar_comando_ejecutado(comando_str)
     
     # Mostrar estado de nmap antes de escanear
     console_manager.mostrar_estado_nmap(NMAP_INFO)
@@ -80,20 +82,17 @@ def comando(
             estado_formateado
         )
     
-    console_manager.console.print("\n")
     console_manager.console.print(tabla)
     
-    # Mostrar información adicional
+    # Mostrar información adicional concisa
     total_dispositivos = len(dispositivos)
-    console_manager.console.print(
-        f"\nResumen: [bold]{dispositivos_activos}[/] dispositivos activos "
-        f"de [bold]{total_dispositivos}[/] encontrados."
+    console_manager.mostrar_exito(
+        f"Escaneo completado: {dispositivos_activos} activos de {total_dispositivos} encontrados."
     )
     
-    # Mostrar notas sobre el tráfico
+    # Mostrar notas sobre el tráfico de forma más concisa
     console_manager.console.print(
-        f"\n[{COLORS['info']}]Nota:[/] Las velocidades de subida/descarga son una aproximación "
-        f"del tráfico generado durante {duracion} segundos."
+        f"[{COLORS['info']}]Nota:[/] Velocidades aprox. durante {duracion}s."
     )
     
     # Si se encontró algún dispositivo, mostrar el que más tráfico genera
@@ -104,13 +103,9 @@ def comando(
         )
         
         console_manager.console.print(
-            f"\nDispositivo con mayor tráfico: "
-            f"[bold cyan]{dispositivo_mas_trafico['ip']}[/] "
-            f"([green]{dispositivo_mas_trafico['nombre']}[/]) - "
-            f"Total: {dispositivo_mas_trafico['velocidad_subida'] + dispositivo_mas_trafico['velocidad_descarga']:.2f} KB/s"
+            f"Mayor tráfico: [bold cyan]{dispositivo_mas_trafico['ip']}[/] "
+            f"({dispositivo_mas_trafico['velocidad_subida'] + dispositivo_mas_trafico['velocidad_descarga']:.2f} KB/s)"
         )
-    
-    console_manager.mostrar_exito("Escaneo de red completado con éxito.")
 
 @app.command("activos", help="Mostrar solo dispositivos activos en una red")
 def activos(
@@ -121,8 +116,11 @@ def activos(
     
     Ejemplo: netadmin activos 192.168.1.1
     """
+    # Mostrar comando que se está ejecutando
+    console_manager.mostrar_comando_ejecutado(f"activos {ip} --duracion {duracion}")
+    
     # Mostrar estado de nmap antes de escanear
-    console_manager.mostrar_estado_nmap(NMAP_INFO)
+    # console_manager.mostrar_estado_nmap(NMAP_INFO) # Ya se muestra dentro de la función 'comando'
     
     # Reutilizamos la función principal con solo_activos=True
     comando(ip=ip, solo_activos=True, duracion=duracion)

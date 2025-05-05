@@ -21,10 +21,8 @@ def comando(
     repeticiones: int = typer.Option(4, help="Número de veces a realizar el ping")
 ):
     """Hace ping a un host para comprobar la conectividad."""
-    console_manager.mostrar_titulo(
-        "Ping a Host",
-        f"Verificando conectividad con {host}"
-    )
+    # Mostrar comando que se está ejecutando
+    console_manager.mostrar_comando_ejecutado(f"ping {host}")
     
     resultados = []
     resultado_general = True
@@ -34,7 +32,7 @@ def comando(
     # Realizar ping el número de veces indicado
     for i in range(1, repeticiones + 1):
         with console_manager.console.status(
-            f"[bold {COLORS['primario']}]Haciendo ping a {host} ({i}/{repeticiones})...", 
+            f"[bold {COLORS['primario']}]Ping {i}/{repeticiones}...", 
             spinner="dots12"
         ):
             resultado, tiempo = network_scanner.ping_host(host)
@@ -47,60 +45,19 @@ def comando(
             else:
                 resultado_general = False
     
-    # Mostrar resultados detallados
-    console_manager.console.print("\n[bold]Resultados del Ping:[/]")
-    
-    for i, (resultado, tiempo) in enumerate(resultados, 1):
-        estado = "Exitoso" if resultado else "Fallido"
-        color = COLORS["exito"] if resultado else COLORS["error"]
-        tiempo_str = f"{tiempo:.2f} ms" if resultado else "N/A"
-        
-        console_manager.console.print(
-            f"  Intento {i}: [{color}]{estado}[/] - Tiempo: {tiempo_str}"
-        )
-    
-    # Mostrar resumen
+    # Calcular tiempo promedio
     tiempo_promedio = tiempo_total / intentos_exitosos if intentos_exitosos > 0 else 0
     porcentaje_exito = (intentos_exitosos / repeticiones) * 100
     
-    # Panel de resumen
-    texto_resumen = Text()
-    texto_resumen.append(f"Host: ", style="bold")
-    texto_resumen.append(f"{host}\n")
-    
-    texto_resumen.append(f"Intentos: ", style="bold")
-    texto_resumen.append(f"{repeticiones}\n")
-    
-    texto_resumen.append(f"Exitosos: ", style="bold")
-    texto_resumen.append(f"{intentos_exitosos} ({porcentaje_exito:.1f}%)\n")
-    
-    texto_resumen.append(f"Tiempo promedio: ", style="bold")
-    if tiempo_promedio > 0:
-        texto_resumen.append(f"{tiempo_promedio:.2f} ms\n")
-    else:
-        texto_resumen.append("N/A\n")
-    
-    texto_resumen.append(f"Estado general: ", style="bold")
-    if resultado_general:
-        texto_resumen.append("Conectividad correcta", style=f"bold {COLORS['exito']}")
-    else:
-        if intentos_exitosos > 0:
-            texto_resumen.append("Conectividad intermitente", style=f"bold {COLORS['advertencia']}")
-        else:
-            texto_resumen.append("Sin conectividad", style=f"bold {COLORS['error']}")
-    
-    console_manager.console.print("\n")
-    console_manager.console.print(
-        Panel(
-            texto_resumen,
-            title="Resumen de Ping",
-            border_style=COLORS["primario"]
-        )
+    # Mostrar resultados simplificados
+    console_manager.datos_formateados(
+        "Resultados de Ping", 
+        {
+            "Host": host,
+            "Exitosos": f"{intentos_exitosos}/{repeticiones} ({porcentaje_exito:.1f}%)",
+            "Tiempo promedio": f"{tiempo_promedio:.2f} ms" if tiempo_promedio > 0 else "N/A",
+            "Estado": "Conectividad correcta" if resultado_general else 
+                      "Conectividad intermitente" if intentos_exitosos > 0 else "Sin conectividad"
+        },
+        estilo="lista"
     )
-    
-    if resultado_general:
-        console_manager.mostrar_exito(f"Ping a {host} completado con éxito.")
-    elif intentos_exitosos > 0:
-        console_manager.mostrar_advertencia(f"Conectividad intermitente con {host}.")
-    else:
-        console_manager.mostrar_error(f"No se pudo conectar con {host}.")

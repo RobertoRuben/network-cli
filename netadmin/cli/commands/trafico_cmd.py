@@ -19,14 +19,13 @@ def comando(
     )
 ):
     """Monitorea el tráfico de red por interfaz durante un tiempo específico."""
-    console_manager.mostrar_titulo(
-        f"Monitoreo de Tráfico de Red", f"Duración: {duracion} segundos"
-    )
+    # Mostrar comando que se está ejecutando
+    console_manager.mostrar_comando_ejecutado(f"trafico --duracion {duracion}")
 
     # Recopilar datos de tráfico con animación
     with console_manager.console.status(
         f"[bold {COLORS['secundario']}]Recopilando datos de tráfico...",
-        spinner=ANIMATION_STYLES["carga"],  # Usar ANIMATION_STYLES en lugar de COLORS
+        spinner=ANIMATION_STYLES["carga"],
     ):
         resultados = network_monitor.monitorear_trafico(duracion=duracion)
 
@@ -41,11 +40,11 @@ def comando(
         {"nombre": "Interfaz", "estilo": "cyan"},
         {"nombre": "Enviado", "estilo": "green", "alineacion": "right"},
         {"nombre": "Recibido", "estilo": "yellow", "alineacion": "right"},
-        {"nombre": "Velocidad Carga", "estilo": "magenta", "alineacion": "right"},
-        {"nombre": "Velocidad Descarga", "estilo": "blue", "alineacion": "right"},
+        {"nombre": "Vel. Carga", "estilo": "magenta", "alineacion": "right"},
+        {"nombre": "Vel. Descarga", "estilo": "blue", "alineacion": "right"},
     ]
     tabla = console_manager.crear_tabla(
-        f"Tráfico de Red (período de {duracion} segundos)", columnas
+        f"Tráfico de Red ({duracion}s)", columnas
     )
 
     # Total para estadísticas
@@ -80,17 +79,16 @@ def comando(
         "",
     )
 
-    console_manager.console.print("\n")
     console_manager.console.print(tabla)
 
-    # Mostrar dispositivo con mayor tráfico
+    # Mostrar dispositivo con mayor tráfico de forma concisa
     if resultados:
         max_trafico = max(
             resultados, key=lambda x: x["bytes_enviados"] + x["bytes_recibidos"]
         )
-        console_manager.console.print(
-            f"\nInterfaz con mayor tráfico: [bold cyan]{max_trafico['interfaz']}[/] "
+        console_manager.mostrar_exito(
+            f"Interfaz con mayor tráfico: {max_trafico['interfaz']} "
             f"({(max_trafico['bytes_enviados'] + max_trafico['bytes_recibidos']) / 1024:.2f} KB)"
         )
-
-    console_manager.mostrar_exito("Monitoreo de tráfico completado con éxito.")
+    else:
+        console_manager.mostrar_exito("Monitoreo de tráfico completado.")

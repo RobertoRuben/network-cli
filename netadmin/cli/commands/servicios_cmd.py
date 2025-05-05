@@ -25,19 +25,17 @@ def comando(
 
     Ejemplo: netadmin servicios 192.168.1.1 --profundo
     """
-    console_manager.mostrar_titulo(
-        f"Detección de Servicios",
-        f"Host: {host} | {'Escaneo profundo' if escaneo_profundo else 'Escaneo estándar'}",
-    )
+    # Mostrar comando que se está ejecutando
+    comando_str = f"servicios {host}"
+    if escaneo_profundo:
+        comando_str += " --profundo"
+    console_manager.mostrar_comando_ejecutado(comando_str)
 
     # Verificar si nmap está disponible
     console_manager.mostrar_estado_nmap(NMAP_INFO)
 
     if not NMAP_INFO["disponible"]:
-        console_manager.mostrar_error(
-            "Esta funcionalidad requiere nmap para la detección de servicios.",
-            "Instale nmap y el módulo python-nmap para continuar.",
-        )
+        console_manager.mostrar_error("Esta funcionalidad requiere nmap.")
         return
 
     try:
@@ -72,17 +70,17 @@ def comando(
             nombre_host = "Desconocido"
             os_match = "Desconocido"
 
-        # Mostrar información general del host
-        panel_host = Panel(
-            f"[bold]Nombre:[/] {nombre_host}\n"
-            f"[bold]Dirección IP:[/] {host}\n"
-            f"[bold]Sistema Operativo:[/] {os_match}\n"
-            f"[bold]Estado:[/] {scanner[host].state()}",
-            title="Información del Host",
-            border_style=COLORS["primario"],
+        # Mostrar información general del host (simplificado)
+        console_manager.datos_formateados(
+            "Información del Host",
+            {
+                "Nombre": nombre_host,
+                "IP": host,
+                "OS (estimado)": os_match,
+                "Estado": scanner[host].state(),
+            },
+            estilo="lista"
         )
-        console_manager.console.print("\n")
-        console_manager.console.print(panel_host)
 
         # Crear tabla para los servicios detectados
         columnas = [
@@ -129,26 +127,17 @@ def comando(
             return
 
         # Mostrar tabla con los servicios encontrados
-        console_manager.console.print("\n")
         console_manager.console.print(tabla)
 
-        # Mostrar resumen
-        console_manager.console.print(
-            f"\n[bold]Resumen:[/] {servicios_encontrados} servicios detectados en {host}"
+        # Mostrar resumen conciso
+        console_manager.mostrar_exito(
+            f"Detección completada: {servicios_encontrados} servicios encontrados en {host}."
         )
 
-        # Mostrar información sobre servicios potencialmente vulnerables
+        # Mostrar información sobre servicios potencialmente vulnerables (simplificado)
         servicios_riesgosos = [
-            "ftp",
-            "telnet",
-            "smtp",
-            "dns",
-            "http",
-            "pop3",
-            "smb",
-            "microsoft-ds",
-            "netbios-ssn",
-            "ms-sql",
+            "ftp", "telnet", "smtp", "dns", "http", "pop3", "smb",
+            "microsoft-ds", "netbios-ssn", "ms-sql",
         ]
         servicios_encontrados_riesgosos = []
 
@@ -165,18 +154,8 @@ def comando(
 
         if servicios_encontrados_riesgosos:
             console_manager.console.print(
-                f"\n[bold {COLORS['advertencia']}]Servicios potencialmente vulnerables:[/]"
+                f"[{COLORS['advertencia']}]Servicios potencialmente vulnerables:[/] {', '.join(servicios_encontrados_riesgosos)}"
             )
-            for servicio in servicios_encontrados_riesgosos:
-                console_manager.console.print(f"• {servicio}")
-
-            console_manager.console.print(
-                f"\n[{COLORS['info']}]Nota:[/] Es recomendable aplicar parches de seguridad y restricciones de acceso."
-            )
-
-        console_manager.mostrar_exito(
-            f"Detección de servicios en {host} completada con éxito."
-        )
 
     except Exception as e:
         console_manager.mostrar_error(f"Error al detectar servicios en {host}", str(e))

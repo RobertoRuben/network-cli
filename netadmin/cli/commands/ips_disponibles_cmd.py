@@ -59,6 +59,12 @@ def comando(
         red_base = scanner.obtener_red_desde_ip(ip_local)
         red = f"{red_base}.0"
 
+    # Mostrar comando que se está ejecutando
+    comando_str = f"ips-disponibles --red {red} --mascara {mascara} --timeout {timeout} --workers {num_workers}"
+    if limite > 0:
+        comando_str += f" --limite {limite}"
+    console_manager.mostrar_comando_ejecutado(comando_str)
+
     # Crear el objeto de red con la máscara
     try:
         network = ipaddress.IPv4Network(f"{red}/{mascara}", strict=False)
@@ -66,25 +72,20 @@ def comando(
         console_manager.mostrar_error(f"Red inválida: {red}/{mascara}", str(e))
         return
 
-    # Mostrar título
-    console_manager.mostrar_titulo(
-        f"IPs Disponibles en la Red",
-        f"Red: {network.network_address}/{network.prefixlen} ({network.num_addresses} direcciones)",
-    )
-
-    # Mostrar información de la red
+    # Mostrar información de la red (simplificado)
     info_red = obtener_informacion_red(network)
-    panel_info = Panel(
-        f"[bold]Network Address:[/] {info_red['network_address']}\n"
-        f"[bold]Broadcast Address:[/] {info_red['broadcast_address']}\n"
-        f"[bold]Netmask:[/] {info_red['netmask']} ({info_red['cidr']})\n"
-        f"[bold]Gateway (estimado):[/] {info_red['gateway']}\n"
-        f"[bold]DNS Servers:[/] {', '.join(info_red['dns_servers'])}\n"
-        f"[bold]Total IPs:[/] {info_red['total_ips']}\n",
-        title="Información de la Red",
-        border_style=COLORS["primario"],
+    console_manager.datos_formateados(
+        "Información de la Red",
+        {
+            "Red": f"{info_red['network_address']}{info_red['cidr']}",
+            "Broadcast": info_red['broadcast_address'],
+            "Máscara": info_red['netmask'],
+            "Gateway (est)": info_red['gateway'],
+            "DNS": ', '.join(info_red['dns_servers']),
+            "Total IPs": str(info_red['total_ips']),
+        },
+        estilo="lista"
     )
-    console_manager.console.print(panel_info)
 
     # Obtener lista total de IPs (exceptuando red y broadcast)
     direcciones = list(network.hosts())
@@ -96,7 +97,7 @@ def comando(
             direcciones = [network.network_address]
 
     console_manager.console.print(
-        f"[bold]Escaneando[/] [cyan]{len(direcciones)}[/] direcciones IP en busca de IPs disponibles...\n"
+        f"[bold]Escaneando[/] [cyan]{len(direcciones)}[/] direcciones IP disponibles...\n"
     )
 
     # Función para verificar si una IP está disponible (inactiva)
@@ -136,10 +137,11 @@ def comando(
     ips_disponibles.sort(key=lambda x: [int(i) for i in x["ip"].split(".")])
 
     # Limitar la cantidad si se ha especificado un límite
-    if limite > 0 and len(ips_disponibles) > limite:
+    total_disponibles_encontradas = len(ips_disponibles)
+    if limite > 0 and total_disponibles_encontradas > limite:
         ips_disponibles = ips_disponibles[:limite]
         console_manager.console.print(
-            f"\n[italic]Mostrando las primeras {limite} IPs disponibles de un total de {len(ips_disponibles)}...[/]"
+            f"\n[italic]Mostrando las primeras {limite} IPs disponibles de {total_disponibles_encontradas}...[/]"
         )
 
     # Crear tabla para mostrar resultados
@@ -147,9 +149,6 @@ def comando(
         {"nombre": "IP", "estilo": "cyan"},
         {"nombre": "Estado", "estilo": "green"},
         {"nombre": "Hostname", "estilo": "blue"},
-        {"nombre": "Máscara", "estilo": "yellow"},
-        {"nombre": "Gateway", "estilo": "magenta"},
-        {"nombre": "DNS", "estilo": "red"},
     ]
 
     tabla = console_manager.crear_tabla(f"IPs Disponibles en la Red", columnas)
@@ -162,27 +161,19 @@ def comando(
             res["ip"],
             "[green]Disponible[/]",
             hostname,
-            str(info_red["netmask"]),
-            info_red["gateway"],
-            info_red["dns_servers"][0] if info_red["dns_servers"] else "-",
         )
 
     # Mostrar tabla con resultados
-    console_manager.console.print()
     console_manager.console.print(tabla)
 
-    # Mostrar resumen
-    console_manager.console.print(
-        f"\n[bold]Resumen:[/] {len(ips_disponibles)} IPs disponibles de {len(direcciones)} direcciones escaneadas"
-    )
-
-    if len(ips_disponibles) > 0:
+    # Mostrar resumen conciso
+    if total_disponibles_encontradas > 0:
         console_manager.mostrar_exito(
-            f"{len(ips_disponibles)} IPs disponibles encontradas en la red {network.network_address}/{network.prefixlen}"
+            f"Escaneo completado: {total_disponibles_encontradas} IPs disponibles encontradas en {network.network_address}/{network.prefixlen}."
         )
     else:
         console_manager.mostrar_advertencia(
-            f"No se encontraron IPs disponibles en la red {network.network_address}/{network.prefixlen}"
+            f"Escaneo completado: No se encontraron IPs disponibles en {network.network_address}/{network.prefixlen}."
         )
 
 

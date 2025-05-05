@@ -32,10 +32,8 @@ def comando(
     
     Ejemplo: netadmin monitor 192.168.1.1 -d 60 -i 1
     """
-    console_manager.mostrar_titulo(
-        f"Monitor de Tráfico en Tiempo Real", 
-        f"IP base: {ip} | Duración: {duracion}s | Intervalo: {intervalo}s"
-    )
+    # Mostrar comando que se está ejecutando
+    console_manager.mostrar_comando_ejecutado(f"monitor {ip} --duracion {duracion} --intervalo {intervalo} --cantidad {cantidad}")
     
     # Escanear la red para obtener dispositivos activos
     with console_manager.console.status(
@@ -63,7 +61,8 @@ def comando(
     
     # Crear la tabla para mostrar el tráfico
     def generar_tabla(datos=None):
-        tabla = Table(title=f"Tráfico en Tiempo Real - Red {red_base}.0/24", box=box.ROUNDED)
+        # Usar estilo SIMPLE para tabla más minimalista
+        tabla = Table(title=f"Tráfico en Tiempo Real - Red {red_base}.0/24", box=box.SIMPLE)
         
         # Columnas
         tabla.add_column("IP", style="cyan")
@@ -71,8 +70,9 @@ def comando(
         tabla.add_column("MAC", style="magenta")
         tabla.add_column("Carga (KB/s)", style="yellow", justify="right")
         tabla.add_column("Descarga (KB/s)", style="blue", justify="right")
-        tabla.add_column("Barra de Carga", justify="center")
-        tabla.add_column("Barra de Descarga", justify="center")
+        # Quitar barras visuales para simplificar
+        # tabla.add_column("Barra de Carga", justify="center")
+        # tabla.add_column("Barra de Descarga", justify="center")
 
         # Si no hay datos, mostrar filas vacías
         if not datos:
@@ -83,38 +83,19 @@ def comando(
                     disp['mac'],
                     "0.00", 
                     "0.00",
-                    "░" * 10,
-                    "░" * 10
+                    # "░" * 10,
+                    # "░" * 10
                 )
             return tabla
             
-        # Encontrar el valor máximo para escalar las barras
-        max_carga = max([d.get('velocidad_carga', 0) for d in datos] or [0.1])
-        max_descarga = max([d.get('velocidad_descarga', 0) for d in datos] or [0.1])
-            
         # Agregar filas con datos
         for dato in datos:
-            # Calcular longitud de las barras (proporción de 20 caracteres)
-            barra_carga = int((dato.get('velocidad_carga', 0) / max_carga) * 20)
-            barra_descarga = int((dato.get('velocidad_descarga', 0) / max_descarga) * 20)
-            
-            # Asegurar longitudes mínimas
-            barra_carga = max(barra_carga, 1) if dato.get('velocidad_carga', 0) > 0 else 0
-            barra_descarga = max(barra_descarga, 1) if dato.get('velocidad_descarga', 0) > 0 else 0
-            
-            # Crear las barras visuales
-            barra_visual_carga = f"[yellow]{'█' * barra_carga}{'░' * (20 - barra_carga)}[/]"
-            barra_visual_descarga = f"[blue]{'█' * barra_descarga}{'░' * (20 - barra_descarga)}[/]"
-            
-            # Agregar fila a la tabla
             tabla.add_row(
                 dato.get('ip', 'N/A'),
                 dato.get('nombre', 'Desconocido'),
                 dato.get('mac', 'Desconocido'),
                 f"{dato.get('velocidad_carga', 0):.2f}",
                 f"{dato.get('velocidad_descarga', 0):.2f}",
-                barra_visual_carga,
-                barra_visual_descarga
             )
         
         return tabla
@@ -129,43 +110,33 @@ def comando(
         'dispositivo_max_trafico': None
     }
     
-    # Panel de estadísticas
+    # Panel de estadísticas simplificado
     def generar_panel_estadisticas():
         tiempo_transcurrido = time.time() - estadisticas['inicio']
         
         texto = Text()
-        texto.append("Tiempo transcurrido: ", style="bold")
-        texto.append(f"{tiempo_transcurrido:.1f} segundos\n")
-        
-        texto.append("Total enviado: ", style="bold")
-        texto.append(f"{estadisticas['total_enviado'] / 1024:.2f} MB\n")
-        
-        texto.append("Total recibido: ", style="bold")
-        texto.append(f"{estadisticas['total_recibido'] / 1024:.2f} MB\n")
-        
-        texto.append("Velocidad máxima de carga: ", style="bold")
-        texto.append(f"{estadisticas['max_carga']:.2f} KB/s\n")
-        
-        texto.append("Velocidad máxima de descarga: ", style="bold")
-        texto.append(f"{estadisticas['max_descarga']:.2f} KB/s\n")
+        texto.append(f"Tiempo: {tiempo_transcurrido:.1f}s | ", style="bold")
+        texto.append(f"Enviado: {estadisticas['total_enviado'] / 1024:.2f} MB | ", style="yellow")
+        texto.append(f"Recibido: {estadisticas['total_recibido'] / 1024:.2f} MB | ", style="blue")
         
         if estadisticas['dispositivo_max_trafico']:
-            texto.append("Dispositivo con mayor tráfico: ", style="bold")
-            texto.append(f"{estadisticas['dispositivo_max_trafico']}\n")
+            texto.append("Mayor tráfico: ", style="bold")
+            texto.append(f"{estadisticas['dispositivo_max_trafico']}")
         
-        return Panel(texto, title="Estadísticas", border_style=COLORS["primario"])
+        # Usar Panel simple sin título
+        return Panel(texto, border_style=COLORS["primario"], box=box.SIMPLE)
     
     # Layout para el panel y la tabla
     def generar_layout(tabla):
         layout = Layout()
         layout.split(
-            Layout(generar_panel_estadisticas(), name="estadisticas", size=9),
+            Layout(generar_panel_estadisticas(), name="estadisticas", size=3), # Reducir tamaño del panel
             Layout(tabla, name="tabla")
         )
         return layout
     
     # Mostrar instrucciones
-    console_manager.console.print(f"\n[{COLORS['info']}]Iniciando monitoreo en tiempo real. Presiona Ctrl+C para detener.[/]\n")
+    console_manager.console.print(f"\n[{COLORS['info']}]Iniciando monitoreo. Presiona Ctrl+C para detener.[/]\n")
     
     # Usar Live para actualizar la tabla en tiempo real
     try:
@@ -207,14 +178,4 @@ def comando(
     except KeyboardInterrupt:
         # Si el usuario detiene el monitoreo con Ctrl+C
         console_manager.console.print("\n")
-        console_manager.mostrar_exito(f"Monitoreo de tráfico finalizado después de {time.time() - estadisticas['inicio']:.1f} segundos.")
-        
-        # Mostrar resumen final
-        console_manager.console.print(f"\n[bold]Resumen del tráfico:[/]")
-        console_manager.console.print(f"  Total enviado: [yellow]{estadisticas['total_enviado'] / 1024:.2f} MB[/]")
-        console_manager.console.print(f"  Total recibido: [blue]{estadisticas['total_recibido'] / 1024:.2f} MB[/]")
-        
-        if estadisticas['dispositivo_max_trafico']:
-            console_manager.console.print(
-                f"  Dispositivo con mayor tráfico: [bold cyan]{estadisticas['dispositivo_max_trafico']}[/]"
-            )
+        console_manager.mostrar_exito(f"Monitoreo finalizado ({time.time() - estadisticas['inicio']:.1f}s). Total: {estadisticas['total_enviado'] / 1024:.2f} MB enviados, {estadisticas['total_recibido'] / 1024:.2f} MB recibidos.")

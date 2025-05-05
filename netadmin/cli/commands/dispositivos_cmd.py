@@ -17,15 +17,13 @@ from netadmin.config.settings import DEFAULTS, COLORS
 @app.command("dispositivos", help="Ver dispositivos conectados a la red")
 def comando(cantidad: int = typer.Option(DEFAULTS["dispositivos_max"], help="Cantidad máxima de dispositivos a mostrar")):
     """Muestra los dispositivos conectados en la red local."""
-    console_manager.mostrar_titulo(
-        "Escaneo de Dispositivos en Red", 
-        "Buscando dispositivos conectados..."
-    )
+    # Mostrar comando que se está ejecutando
+    console_manager.mostrar_comando_ejecutado(f"dispositivos --cantidad {cantidad}")
     
     # Mostrar estado de nmap antes de escanear
     console_manager.mostrar_estado_nmap(NMAP_INFO)
     
-    with console_manager.console.status("[bold green]Escaneando la red para detectar dispositivos...", spinner="dots10"):
+    with console_manager.console.status("[bold green]Escaneando la red...", spinner="dots10"):
         dispositivos = network_scanner.escanear_red(cantidad_max=cantidad)
     
     if not dispositivos:
@@ -50,9 +48,7 @@ def comando(cantidad: int = typer.Option(DEFAULTS["dispositivos_max"], help="Can
             f"[green]Activo[/]" if dispositivo['estado'] == 'up' else f"[{COLORS['error']}]Inactivo[/]"
         )
     
-    console_manager.console.print("\n")
     console_manager.console.print(tabla)
     
-    # Mostrar información adicional
-    console_manager.console.print(f"\nSe encontraron [bold]{len(dispositivos)}[/] dispositivos en la red.")
-    console_manager.mostrar_exito("Escaneo de red completado con éxito.")
+    # Mostrar información adicional concisa
+    console_manager.mostrar_exito(f"Se encontraron {len(dispositivos)} dispositivos.")

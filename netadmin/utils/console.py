@@ -25,25 +25,53 @@ class ConsoleManager:
         self.console = Console()
     
     def mostrar_titulo(self, titulo, subtitulo=None):
-        """Muestra un título atractivo con bordes."""
-        texto = Text(titulo, justify="center")
-        if subtitulo:
-            texto.append("\n")
-            texto.append(subtitulo, style=f"italic {COLORS['info']}")
+        """Muestra un título con estilo moderno y minimalista con emojis."""
+        # Estilo inspirado en CLIs modernas con emojis
+        self.console.print()
         
-        self.console.print(Panel.fit(
-            texto,
-            style=f"bold {COLORS['primario']}"
-        ))
+        # Determinar emoji según el título
+        emoji = "🌐"  # Emoji por defecto para red
+        if "Velocidad" in titulo:
+            emoji = "⚡"
+        elif "Ping" in titulo:
+            emoji = "📡"
+        elif "Dispositivos" in titulo or "Activos" in titulo:
+            emoji = "🖥️"
+        elif "Puertos" in titulo:
+            emoji = "🔌"
+        elif "Tráfico" in titulo or "Monitor" in titulo:
+            emoji = "📊"
+        elif "Servicio" in titulo:
+            emoji = "🔧"
+        elif "Vulnerabilidades" in titulo:
+            emoji = "🔒"
+        elif "IP" in titulo:
+            emoji = "📝"
+        elif "Escanear" in titulo:
+            emoji = "🔍"
+        elif "Estadísticas" in titulo:
+            emoji = "📈"
+        
+        # Verificar si estamos en el título principal de la aplicación
+        if "NetAdmin CLI" in titulo:
+            emoji = "🚀"
+            # Título principal con emoji y formato moderno
+            self.console.print(f"  [{COLORS['primario']}]┃[/] [bold white]{emoji} {titulo}[/]")
+        else:
+            # Otros títulos con emoji correspondiente
+            self.console.print(f"  [{COLORS['primario']}]┃[/] [bold white]{emoji} {titulo}[/]")
+        
+        # Subtítulo con estilo tenue si existe
+        if subtitulo:
+            self.console.print(f"  [{COLORS['primario']}]┃[/] [dim]{subtitulo}[/]")
+        
+        # Separador minimalista
+        self.console.print()
     
     def mostrar_estado_nmap(self, info_nmap):
-        """Muestra el estado de nmap con iconos visuales.
-        
-        Args:
-            info_nmap: Diccionario con información de nmap
-        """
+        """Muestra el estado de nmap con iconos visuales."""
         if info_nmap["disponible"]:
-            self.console.print(f"[bold green]✓[/] Nmap disponible: {info_nmap['version']}")
+            self.console.print(f"[bold {COLORS['exito']}]✓[/] Nmap disponible: {info_nmap['version']}")
         else:
             self.console.print(f"[bold {COLORS['advertencia']}]⚠[/] {info_nmap['mensaje']} Algunas funcionalidades estarán limitadas.")
     
@@ -54,8 +82,9 @@ class ConsoleManager:
             time.sleep(duracion)
     
     def crear_tabla(self, titulo, columnas):
-        """Crea una tabla con el estilo definido en la configuración."""
-        tabla = Table(title=titulo, box=getattr(box, TABLE_STYLES["box"]))
+        """Crea una tabla con estilo moderno y minimalista."""
+        # Usar SIMPLE como estilo de tabla para un aspecto más limpio y moderno
+        tabla = Table(title=titulo, box=box.SIMPLE, title_style=f"bold {COLORS['primario']}")
         
         for columna in columnas:
             nombre = columna["nombre"]
@@ -104,13 +133,13 @@ class ConsoleManager:
     
     def mostrar_error(self, mensaje, detalle=None):
         """Muestra un mensaje de error formateado."""
-        self.console.print(f"[bold {COLORS['error']}]Error:[/] {mensaje}")
+        self.console.print(f"[bold {COLORS['error']}]✖[/] {mensaje}")
         if detalle:
-            self.console.print(f"[{COLORS['info']}]Detalle: {detalle}[/]")
+            self.console.print(f"  [dim]{detalle}[/]")
     
     def mostrar_advertencia(self, mensaje):
         """Muestra un mensaje de advertencia formateado."""
-        self.console.print(f"[bold {COLORS['advertencia']}]Advertencia:[/] {mensaje}")
+        self.console.print(f"[bold {COLORS['advertencia']}]⚠[/] {mensaje}")
     
     def mostrar_exito(self, mensaje):
         """Muestra un mensaje de éxito formateado."""
@@ -125,18 +154,25 @@ class ConsoleManager:
             estilo: Estilo de visualización ("grid" o "lista")
         """
         if estilo == "grid":
-            tabla = Table(title=titulo, box=getattr(box, TABLE_STYLES["box"]), show_header=False)
+            # Usar box.SIMPLE para mantener consistencia con el estilo moderno
+            tabla = Table(title=titulo, box=box.SIMPLE, show_header=False, title_style=f"bold {COLORS['primario']}")
             tabla.add_column("Clave", style=f"bold {COLORS['primario']}")
-            tabla.add_column("Valor", style=COLORS["secundario"])
+            tabla.add_column("Valor", style=COLORS['secundario'])
             
             for clave, valor in datos.items():
                 tabla.add_row(clave, str(valor))
                 
             self.console.print(tabla)
         else:
+            # Estilo de lista con iconos modernos
             self.console.print(f"\n[bold {COLORS['primario']}]{titulo}[/]")
             for clave, valor in datos.items():
-                self.console.print(f"  [bold]{clave}:[/] [{COLORS['secundario']}]{valor}[/]")
+                self.console.print(f"  [{COLORS['info']}]•[/] [bold]{clave}:[/] {valor}")
+    
+    def mostrar_comando_ejecutado(self, comando):
+        """Muestra el nombre del comando que se está ejecutando actualmente."""
+        self.console.print(f"[bold {COLORS['primario']}]⟩[/] [bold]Ejecutando[/]: [bold white]{comando}[/]")
+        self.console.print()
 
 # Instancia global para uso en toda la aplicación
 console_manager = ConsoleManager()

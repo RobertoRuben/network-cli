@@ -35,35 +35,27 @@ def comando(
 
     Ejemplo: netadmin vulnerabilidades 192.168.1.1 --intensidad 4
     """
+    # Mostrar comando que se está ejecutando
+    comando_str = f"vulnerabilidades {host} --intensidad {intensidad}"
+    if guardar:
+        comando_str += " --guardar"
+    console_manager.mostrar_comando_ejecutado(comando_str)
+
     # Validar la intensidad del escaneo
     if intensidad < 1 or intensidad > 5:
         console_manager.mostrar_error("El nivel de intensidad debe estar entre 1 y 5")
         return
 
-    console_manager.mostrar_titulo(
-        f"Análisis de Vulnerabilidades", f"Host: {host} | Intensidad: {intensidad}/5"
-    )
-
     # Verificar si nmap está disponible
     console_manager.mostrar_estado_nmap(NMAP_INFO)
 
     if not NMAP_INFO["disponible"]:
-        console_manager.mostrar_error(
-            "Esta funcionalidad requiere nmap para el análisis de vulnerabilidades.",
-            "Instale nmap y el módulo python-nmap para continuar.",
-        )
+        console_manager.mostrar_error("Esta funcionalidad requiere nmap.")
         return
 
-    # Advertencia sobre privilegios y permisos
-    console_manager.console.print(f"[bold {COLORS['advertencia']}]Nota importante:[/]")
+    # Advertencia sobre privilegios y permisos (más concisa)
     console_manager.console.print(
-        "• Este escaneo puede requerir privilegios de administrador"
-    )
-    console_manager.console.print(
-        "• Asegúrate de tener autorización para escanear el host objetivo"
-    )
-    console_manager.console.print(
-        "• El escaneo puede ser detectado por sistemas de seguridad\n"
+        f"[{COLORS['advertencia']}]Nota:[/] Escaneo puede requerir permisos y ser detectado."
     )
 
     try:
@@ -87,7 +79,7 @@ def comando(
 
         # Realizar el escaneo con animación
         with console_manager.console.status(
-            f"[bold {COLORS['primario']}]Analizando vulnerabilidades en {host}...",
+            f"[bold {COLORS['primario']}]Analizando vulnerabilidades (Intensidad {intensidad}/5) en {host}...",
             spinner=ANIMATION_STYLES["carga"],
         ):
             scanner.scan(hosts=host, arguments=arguments)
@@ -121,35 +113,20 @@ def comando(
                 info_puerto = scanner[host][proto][puerto]
 
                 # Buscar scripts relacionados con vulnerabilidades
-                for key, data in info_puerto.items():
-                    if key.startswith("script_"):
+                if 'script' in info_puerto:
+                    for script_name, data in info_puerto['script'].items():
                         vuln_encontradas += 1
-                        script_name = key.replace("script_", "")
 
                         # Analizar severidad basada en palabras clave
                         severidad = "Baja"
                         detalles = str(data)
 
                         # Palabras clave para determinar la severidad
-                        if any(
-                            kw in detalles.lower()
-                            for kw in [
-                                "critical",
-                                "crítico",
-                                "remote code execution",
-                                "rce",
-                            ]
-                        ):
+                        if any(kw in detalles.lower() for kw in ["critical", "crítico", "remote code execution", "rce"]):
                             severidad = "[bold red]Crítica[/]"
-                        elif any(
-                            kw in detalles.lower()
-                            for kw in ["high", "alta", "bypass", "overflow"]
-                        ):
+                        elif any(kw in detalles.lower() for kw in ["high", "alta", "bypass", "overflow"]):
                             severidad = "[bold orange]Alta[/]"
-                        elif any(
-                            kw in detalles.lower()
-                            for kw in ["medium", "media", "information disclosure"]
-                        ):
+                        elif any(kw in detalles.lower() for kw in ["medium", "media", "information disclosure"]):
                             severidad = "[yellow]Media[/]"
 
                         # Agregar a la tabla
@@ -178,33 +155,20 @@ def comando(
 
         if vuln_encontradas == 0:
             console_manager.mostrar_exito(
-                f"No se detectaron vulnerabilidades en {host}"
+                f"Análisis completado: No se detectaron vulnerabilidades en {host}"
             )
         else:
             # Mostrar tabla con las vulnerabilidades encontradas
-            console_manager.console.print("\n")
             console_manager.console.print(tabla)
 
-            # Mostrar resumen
-            console_manager.console.print(
-                f"\n[bold]Resumen:[/] {vuln_encontradas} vulnerabilidades potenciales detectadas en {host}"
+            # Mostrar resumen conciso
+            console_manager.mostrar_exito(
+                f"Análisis completado: {vuln_encontradas} vulnerabilidades potenciales detectadas en {host}."
             )
 
-            # Mostrar recomendaciones
+            # Mostrar recomendaciones concisas
             console_manager.console.print(
-                f"\n[bold {COLORS['info']}]Recomendaciones:[/]"
-            )
-            console_manager.console.print(
-                "• Actualiza los servicios vulnerables a las últimas versiones"
-            )
-            console_manager.console.print(
-                "• Aplica los parches de seguridad disponibles"
-            )
-            console_manager.console.print(
-                "• Considera desactivar servicios innecesarios"
-            )
-            console_manager.console.print(
-                "• Implementa restricciones de acceso mediante firewall"
+                f"[{COLORS['info']}]Recomendaciones:[/] Actualizar servicios, aplicar parches, revisar configuración."
             )
 
             # Si se solicita guardar el reporte
@@ -239,10 +203,6 @@ def comando(
                     console_manager.mostrar_error(
                         f"Error al guardar el reporte: {str(e)}"
                     )
-
-        console_manager.mostrar_exito(
-            f"Análisis de vulnerabilidades en {host} completado con éxito."
-        )
 
     except Exception as e:
         console_manager.mostrar_error(

@@ -53,18 +53,18 @@ def comando(
         red_base = scanner.obtener_red_desde_ip(ip_local)
         red = f"{red_base}.0"
 
+    # Mostrar comando que se está ejecutando
+    comando_str = f"ips-ocupadas --red {red} --mascara {mascara} --timeout {timeout} --workers {num_workers}"
+    if mostrar_inactivas:
+        comando_str += " --inactivas"
+    console_manager.mostrar_comando_ejecutado(comando_str)
+
     # Crear el objeto de red con la máscara
     try:
         network = ipaddress.IPv4Network(f"{red}/{mascara}", strict=False)
     except ValueError as e:
         console_manager.mostrar_error(f"Red inválida: {red}/{mascara}", str(e))
         return
-
-    # Mostrar título
-    console_manager.mostrar_titulo(
-        f"IPs Ocupadas en la Red",
-        f"Red: {network.network_address}/{network.prefixlen} ({network.num_addresses} direcciones)",
-    )
 
     # Obtener lista total de IPs (exceptuando red y broadcast)
     direcciones = list(network.hosts())
@@ -76,7 +76,7 @@ def comando(
             direcciones = [network.network_address]
 
     console_manager.console.print(
-        f"[bold]Escaneando[/] [cyan]{len(direcciones)}[/] direcciones IP...\n"
+        f"[bold]Escaneando[/] [cyan]{len(direcciones)}[/] direcciones en {network.network_address}/{network.prefixlen}...\n"
     )
 
     # Función para verificar si una IP está activa
@@ -119,8 +119,11 @@ def comando(
                 progress.update(tarea, advance=1)
 
     # Filtrar resultados si no se ha pedido mostrar inactivas
+    ips_activas_filtradas = [r for r in resultados if r["activa"]]
     if not mostrar_inactivas:
-        resultados = [r for r in resultados if r["activa"]]
+        resultados_mostrados = ips_activas_filtradas
+    else:
+        resultados_mostrados = resultados
 
     # Crear tabla para mostrar resultados
     columnas = [
@@ -134,32 +137,24 @@ def comando(
     tabla = console_manager.crear_tabla(f"Resultados del escaneo de red", columnas)
 
     # Agregar filas a la tabla
-    ips_activas = 0
-    for res in resultados:
+    for res in resultados_mostrados:
         estado = "[green]Activa[/]" if res["activa"] else "[red]Inactiva[/]"
         tiempo = f"{res['tiempo']:.2f}" if res["activa"] else "-"
         hostname = res["hostname"] if res["hostname"] else "-"
         mac = res["mac"] if res["mac"] else "-"
 
-        if res["activa"]:
-            ips_activas += 1
-
         tabla.add_row(res["ip"], estado, tiempo, hostname, mac)
 
     # Mostrar tabla con resultados
-    console_manager.console.print()
     console_manager.console.print(tabla)
 
-    # Mostrar resumen
-    console_manager.console.print(
-        f"\n[bold]Resumen:[/] {ips_activas} IPs activas de {len(direcciones)} direcciones escaneadas"
-    )
-
-    if ips_activas > 0:
+    # Mostrar resumen conciso
+    ips_activas_total = len(ips_activas_filtradas)
+    if ips_activas_total > 0:
         console_manager.mostrar_exito(
-            f"{ips_activas} IPs ocupadas encontradas en la red {network.network_address}/{network.prefixlen}"
+            f"Escaneo completado: {ips_activas_total} IPs ocupadas encontradas en {network.network_address}/{network.prefixlen}."
         )
     else:
         console_manager.mostrar_advertencia(
-            f"No se encontraron IPs ocupadas en la red {network.network_address}/{network.prefixlen}"
+            f"Escaneo completado: No se encontraron IPs ocupadas en {network.network_address}/{network.prefixlen}."
         )

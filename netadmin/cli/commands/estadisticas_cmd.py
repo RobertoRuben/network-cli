@@ -37,13 +37,9 @@ def comando(
 
     Ejemplo: netadmin estadisticas --duracion 120 --intervalo 2
     """
-    console_manager.mostrar_titulo(
-        "Estadísticas de Red en Tiempo Real",
-        f"Intervalo de actualización: {intervalo}s | Duración: {'Continua' if duracion == 0 else f'{duracion}s'}",
-    )
-
-    # Pequeño retraso para poder ver el título
-    time.sleep(1)
+    # Mostrar comando que se está ejecutando
+    duracion_str = "continua" if duracion == 0 else f"{duracion}s"
+    console_manager.mostrar_comando_ejecutado(f"estadisticas --duracion {duracion_str} --intervalo {intervalo}")
 
     # Inicializar contadores
     io_inicial = psutil.net_io_counters(pernic=True)
@@ -60,27 +56,16 @@ def comando(
         tiempo_actual = time.time()
         tiempo_transcurrido = tiempo_actual - tiempo_inicio
 
-        # Tabla principal para estadísticas actuales
+        # Tabla principal para estadísticas actuales (simplificada)
         tabla_principal = Table(
-            title="Estadísticas de Red por Interfaz",
+            title=f"Estadísticas de Red (Intervalo: {intervalo}s)",
             box=getattr(box, TABLE_STYLES["box"]),
         )
         tabla_principal.add_column("Interfaz", style="cyan")
-        tabla_principal.add_column("Bytes Enviados", style="green", justify="right")
-        tabla_principal.add_column("Bytes Recibidos", style="yellow", justify="right")
         tabla_principal.add_column("Vel. Carga", style="green", justify="right")
         tabla_principal.add_column("Vel. Descarga", style="yellow", justify="right")
-
-        # Tabla para estadísticas totales
-        tabla_total = Table(
-            title=f"Resumen de Tráfico (Tiempo: {int(tiempo_transcurrido)}s)",
-            box=getattr(box, TABLE_STYLES["box"]),
-        )
-        tabla_total.add_column("Interfaz", style="cyan")
-        tabla_total.add_column("Total Enviado", style="green", justify="right")
-        tabla_total.add_column("Total Recibido", style="yellow", justify="right")
-        tabla_total.add_column("Pico Carga", style="green", justify="right")
-        tabla_total.add_column("Pico Descarga", style="yellow", justify="right")
+        tabla_principal.add_column("Total Enviado", style="green", justify="right")
+        tabla_principal.add_column("Total Recibido", style="yellow", justify="right")
 
         # Generar filas para cada interfaz
         interfaces_activas = []
@@ -124,49 +109,33 @@ def comando(
                 if velocidad_carga > 0 or velocidad_descarga > 0:
                     tabla_principal.add_row(
                         interfaz,
-                        f"{sent_total:,} B",
-                        f"{recv_total:,} B",
                         f"{velocidad_carga:.2f} KB/s",
                         f"{velocidad_descarga:.2f} KB/s",
+                        f"{bytes_enviados_total[interfaz]/1024:.2f} KB",
+                        f"{bytes_recibidos_total[interfaz]/1024:.2f} KB",
                     )
                     interfaces_activas.append(interfaz)
 
-                # Agregar a la tabla de totales
-                tabla_total.add_row(
-                    interfaz,
-                    f"{bytes_enviados_total[interfaz]/1024:.2f} KB",
-                    f"{bytes_recibidos_total[interfaz]/1024:.2f} KB",
-                    f"{picos_velocidad_carga[interfaz]:.2f} KB/s",
-                    f"{picos_velocidad_descarga[interfaz]:.2f} KB/s",
-                )
-
-        # Panel informativo
+        # Panel informativo simplificado
         ahora = datetime.now().strftime("%H:%M:%S")
         info_panel = Panel(
-            f"[bold]Hora actual:[/] {ahora}\n"
-            f"[bold]Interfaces activas:[/] {len(interfaces_activas)}\n"
-            f"[bold]Tiempo de monitoreo:[/] {int(tiempo_transcurrido)} segundos\n"
-            f"[bold]Interfaces monitoreadas:[/] {', '.join(interfaces_activas) if interfaces_activas else 'Ninguna'}\n",
-            title="Información del Sistema",
+            f"[bold]Hora:[/] {ahora} | [bold]Tiempo:[/] {int(tiempo_transcurrido)}s | [bold]Interfaces activas:[/] {len(interfaces_activas)}",
             border_style=COLORS["primario"],
+            box=box.SIMPLE # Usar borde simple
         )
 
         # Crear un layout para organizar todo
         layout = Layout()
-        layout.split(Layout(name="header", size=10), Layout(name="main"))
-        layout["header"].update(info_panel)
+        layout.split(Layout(info_panel, name="header", size=3), Layout(name="main"))
 
         # Dividir la sección principal según el contenido
         if interfaces_activas:
-            layout["main"].split_column(
-                Layout(name="stats"), Layout(name="totals", size=10)
-            )
-            layout["stats"].update(tabla_principal)
-            layout["totals"].update(tabla_total)
+            layout["main"].update(tabla_principal)
         else:
             mensaje_espera = Panel(
                 "[italic]Esperando actividad en las interfaces de red...[/]",
                 border_style=COLORS["advertencia"],
+                box=box.SIMPLE
             )
             layout["main"].update(mensaje_espera)
 
@@ -196,4 +165,6 @@ def comando(
     except Exception as e:
         console_manager.mostrar_error(f"Error durante el monitoreo", str(e))
     finally:
-        console_manager.mostrar_exito("Monitoreo de estadísticas finalizado.")
+        # Mensaje final más conciso
+        tiempo_total = time.time() - tiempo_inicio
+        console_manager.mostrar_exito(f"Monitoreo finalizado ({tiempo_total:.1f}s).")

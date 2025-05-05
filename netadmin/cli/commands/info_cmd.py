@@ -17,13 +17,11 @@ from netadmin.config.settings import COLORS
 @app.command("info", help="Mostrar información básica de red")
 def comando():
     """Muestra información básica de la configuración de red."""
-    console_manager.mostrar_titulo(
-        "Información de Red",
-        "Detalles de configuración e interfaces"
-    )
+    # Mostrar comando que se está ejecutando
+    console_manager.mostrar_comando_ejecutado("info")
     
-    # Obtener información con animación
-    console_manager.mostrar_animacion_carga("Obteniendo información de red", duracion=1.5)
+    # Obtener información con animación más corta
+    console_manager.mostrar_animacion_carga("Obteniendo información de red", duracion=1)
     
     # Recopilar información de red
     info_red = network_monitor.obtener_info_red()
@@ -39,53 +37,24 @@ def comando():
         }
     )
     
-    # Mostrar detalles de interfaces en formato de tabla
+    # Mostrar detalles de interfaces en formato de tabla conciso
     columnas = [
         {"nombre": "Nombre", "estilo": "cyan"},
         {"nombre": "IP", "estilo": "green"},
         {"nombre": "MAC", "estilo": "magenta"},
-        {"nombre": "Estado", "estilo": "yellow"},
-        {"nombre": "Velocidad", "estilo": "blue"}
+        {"nombre": "Estado", "estilo": "yellow"}
     ]
     tabla = console_manager.crear_tabla("Interfaces de Red", columnas)
     
     # Agregar información de interfaces a la tabla
     for interfaz in info_red["interfaces"]:
         estado = f"[green]Activo[/]" if interfaz["activa"] else f"[{COLORS['error']}]Inactivo[/]"
-        velocidad = f"{interfaz['velocidad']} Mbps" if interfaz["velocidad"] else "Desconocido"
         
         tabla.add_row(
             interfaz["nombre"],
             interfaz["ipv4"],
             interfaz["mac"],
-            estado,
-            velocidad
+            estado
         )
     
-    console_manager.console.print("\n")
     console_manager.console.print(tabla)
-    
-    # Mostrar resumen visual de interfaces activas/inactivas
-    paneles = []
-    for interfaz in info_red["interfaces"]:
-        color_panel = "green" if interfaz["activa"] else "red"
-        content = f"[bold]{interfaz['nombre']}[/]\n" \
-                 f"IP: {interfaz['ipv4']}\n" \
-                 f"MAC: {interfaz['mac'][:8]}...\n" \
-                 f"{'Activo' if interfaz['activa'] else 'Inactivo'}"
-        
-        paneles.append(
-            Panel(
-                content,
-                title=interfaz["nombre"],
-                border_style=color_panel,
-                width=30
-            )
-        )
-    
-    # Mostrar paneles si hay interfaces
-    if paneles:
-        console_manager.console.print("\n[bold]Resumen de Interfaces:[/]")
-        console_manager.console.print(Columns(paneles))
-    
-    console_manager.mostrar_exito("Información de red obtenida con éxito.")

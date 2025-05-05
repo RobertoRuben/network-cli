@@ -12,11 +12,14 @@ from netadmin.config import APP_NAME, APP_VERSION
 def main():
     """Punto de entrada principal para la aplicación NetAdmin CLI."""
     try:
-        # Mostrar bienvenida
-        console_manager.mostrar_titulo(
-            f"{APP_NAME} v{APP_VERSION}",
-            "Herramienta de administración de red con animaciones"
-        )
+        import sys
+        
+        # Mostrar bienvenida solo cuando se usa --help o no hay argumentos
+        if len(sys.argv) <= 1 or "--help" in sys.argv or "-h" in sys.argv:
+            console_manager.mostrar_titulo(
+                f"{APP_NAME} v{APP_VERSION}",
+                "Herramienta de administración de red con animaciones"
+            )
         
         # Ejecutar la aplicación
         app()

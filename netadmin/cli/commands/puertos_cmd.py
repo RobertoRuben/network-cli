@@ -31,6 +31,16 @@ def comando(
 
     Ejemplo: netadmin puertos 192.168.1.1 --rapido
     """
+    # Construir string del comando ejecutado
+    comando_str = f"puertos {host}"
+    if rapido:
+        comando_str += " --rapido"
+    elif todos:
+        comando_str += " --todos"
+    else:
+        comando_str += f" --inicio {inicio} --fin {fin}"
+    console_manager.mostrar_comando_ejecutado(comando_str)
+
     # Ajustar los puertos según las opciones
     if todos:
         inicio = 1
@@ -38,46 +48,18 @@ def comando(
         titulo_adicional = "Todos los puertos (1-65535)"
     elif rapido:
         puertos_comunes = [
-            21,
-            22,
-            23,
-            25,
-            53,
-            80,
-            110,
-            123,
-            143,
-            443,
-            465,
-            587,
-            993,
-            995,
-            1433,
-            1521,
-            3306,
-            3389,
-            5432,
-            5900,
-            8080,
-            8443,
+            21, 22, 23, 25, 53, 80, 110, 123, 143, 443, 465, 587, 993, 995,
+            1433, 1521, 3306, 3389, 5432, 5900, 8080, 8443,
         ]
         titulo_adicional = "Puertos comunes"
     else:
-        titulo_adicional = f"Rango de puertos {inicio}-{fin}"
-
-    # Mostrar título con información
-    console_manager.mostrar_titulo(
-        f"Escáner de Puertos", f"Host: {host} | {titulo_adicional}"
-    )
+        titulo_adicional = f"Rango {inicio}-{fin}"
 
     # Verificar si nmap está disponible
     console_manager.mostrar_estado_nmap(NMAP_INFO)
 
     if not NMAP_INFO["disponible"]:
-        console_manager.mostrar_error(
-            "Esta funcionalidad requiere nmap para un escaneo completo.",
-            "Instale nmap y el módulo python-nmap para continuar.",
-        )
+        console_manager.mostrar_error("Esta funcionalidad requiere nmap.")
         return
 
     try:
@@ -94,7 +76,7 @@ def comando(
 
         # Realizar el escaneo con barra de progreso
         with console_manager.console.status(
-            f"[bold {COLORS['primario']}]Escaneando puertos en {host}...",
+            f"[bold {COLORS['primario']}]Escaneando puertos en {host} ({titulo_adicional})...",
             spinner=ANIMATION_STYLES["carga"],
         ):
             scanner.scan(hosts=host, arguments=arguments)
@@ -155,36 +137,16 @@ def comando(
 
         if puertos_abiertos == 0:
             console_manager.mostrar_advertencia(
-                f"No se encontraron puertos abiertos en {host}"
+                f"No se encontraron puertos abiertos en {host} ({titulo_adicional})"
             )
             return
 
         # Mostrar tabla con resultados
-        console_manager.console.print("\n")
         console_manager.console.print(tabla)
 
-        # Mostrar resumen
-        console_manager.console.print(
-            f"\n[bold]Resumen:[/] {puertos_abiertos} puertos abiertos encontrados en {host}"
-        )
-
-        # Mostrar recomendaciones de seguridad básicas
-        if puertos_abiertos > 0:
-            console_manager.console.print(
-                f"\n[bold {COLORS['info']}]Recomendaciones de seguridad:[/]"
-            )
-            console_manager.console.print(
-                "• Verifica que todos los puertos abiertos sean necesarios"
-            )
-            console_manager.console.print(
-                "• Asegúrate de que los servicios estén actualizados"
-            )
-            console_manager.console.print(
-                "• Configura reglas de firewall para limitar el acceso"
-            )
-
+        # Mostrar resumen conciso
         console_manager.mostrar_exito(
-            f"Escaneo de puertos en {host} completado con éxito."
+            f"Escaneo completado: {puertos_abiertos} puertos abiertos encontrados en {host}."
         )
 
     except Exception as e:
